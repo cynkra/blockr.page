@@ -1,0 +1,26 @@
+Package: blockr.page
+Title: A Document View for 'blockr' Boards
+Version: 0.0.6
+Authors@R:
+    person("Christoph", "Sax", , "christoph@cynkra.com", role = c("aut", "cre"))
+Description: Shows a 'blockr' board as one linear document: blocks in reading
+    order with text in between, the board's graph drawn in a gutter beside the
+    text. Adding a block in the document adds it to the board. Runs on
+    'blockr.core' alone, without 'blockr.dock'.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    blockr.core (>= 0.1.4),
+    blockr.ui,
+    bslib,
+    commonmark,
+    htmltools,
+    jsonlite,
+    stats,
+    shiny,
+    utils
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
