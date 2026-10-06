@@ -8,6 +8,8 @@ Description: Shows a 'blockr' board as one linear document: blocks in reading
     text. Adding a block in the document adds it to the board. Runs on
     'blockr.core' alone, without 'blockr.dock'.
 License: GPL (>= 3)
+URL: https://github.com/cynkra/blockr.page
+BugReports: https://github.com/cynkra/blockr.page/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
@@ -21,6 +23,9 @@ Imports:
     stats,
     shiny,
     utils
+Remotes:
+    BristolMyersSquibb/blockr.core,
+    BristolMyersSquibb/blockr.ui
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
