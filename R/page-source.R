@@ -98,7 +98,7 @@ page_head <- function(title, fmt = "qmd") {
 
 # The source of every item, in item order: a character string per item.
 # `fmt` is "qmd" or "R".
-page_pieces <- function(items, board, code, fmt = "qmd") {
+page_pieces <- function(items, board, code, fmt = "qmd", prose = list()) {
 
   spin <- identical(fmt, "R")
   blks <- blockr.core::board_blocks(board)
@@ -116,6 +116,11 @@ page_pieces <- function(items, board, code, fmt = "qmd") {
                      collapse = "\n"))
       }
       id <- it$block
+      # text: its markdown, inline R and all, which the document evaluates
+      if (id %in% names(prose)) {
+        return(paste(rem(strsplit(prose[[id]], "\n", fixed = TRUE)[[1L]]),
+                     collapse = "\n"))
+      }
       body <- if (id %in% names(code)) code[[id]] else paste("#", id, "is not built yet")
       # a chart the browser draws prints nothing in the document
       out <- isTRUE(it$output) && !browser_drawn(blks[[id]])
@@ -130,8 +135,9 @@ page_pieces <- function(items, board, code, fmt = "qmd") {
   )
 }
 
-page_document <- function(items, board, code, fmt = "qmd", title = NULL) {
-  pieces <- page_pieces(items, board, code, fmt)
+page_document <- function(items, board, code, fmt = "qmd", title = NULL,
+                          prose = list()) {
+  pieces <- page_pieces(items, board, code, fmt, prose)
   paste0(paste(c(page_head(title, fmt), unlist(pieces)), collapse = "\n\n"), "\n")
 }
 

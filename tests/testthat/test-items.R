@@ -13,8 +13,8 @@ test_that("items drop unknown blocks and append missing ones", {
     items = list("Intro", list(block = "zz"), list(block = "b"))
   )
   its <- page_items(brd)
-  expect_identical(its[[1L]], list(text = "Intro"))
-  expect_identical(item_block_ids(its), c("b", "a"))
+  expect_identical(its[[1L]], list(block = "text_1", code = FALSE, output = TRUE))
+  expect_identical(item_block_ids(its), c("text_1", "b", "a"))
 })
 
 test_that("a leading # heading names the board, other headings are sections", {
@@ -25,7 +25,8 @@ test_that("a leading # heading names the board, other headings are sections", {
   expect_identical(board_title(brd), "Iris")
   its <- page_items(brd)
   expect_identical(its[[1L]], list(section = "Data"))
-  expect_identical(its[[3L]], list(text = "Text with\n## a heading"))
+  expect_identical(its[[3L]], list(block = "text_1", code = FALSE, output = TRUE))
+  expect_true(is_prose_block(blockr.core::board_blocks(brd)[["text_1"]]))
 })
 
 test_that("a board name in the options wins over a leading heading", {

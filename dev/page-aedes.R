@@ -92,10 +92,13 @@ board <- new_page_board(
     list(block = "mcoef"),
     list(block = "mdiag"),
     list(block = "mfit"),
+    # inline R: naming `mdl` makes the text read from the model block
     list(text = paste(
-      "It finds 3.59 times more eggs without the programme, 95% CI 3.51 to",
-      "3.67. The interval is too narrow. Each trap is read up to ten times, and",
-      "the residual deviance is 180 times its degrees of freedom."
+      "It finds `r round(exp(coef(mdl)[[2]]), 2)` times more eggs without the",
+      "programme, 95% CI `r round(exp(confint.default(mdl)[2, 1]), 2)` to",
+      "`r round(exp(confint.default(mdl)[2, 2]), 2)`. The interval is too",
+      "narrow. Each trap is read up to ten times, and the residual deviance is",
+      "`r round(deviance(mdl) / df.residual(mdl))` times its degrees of freedom."
     )),
     list(section = "The published model"),
     list(text = paste(

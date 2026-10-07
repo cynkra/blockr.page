@@ -13,6 +13,12 @@
 #' to its settings. Left out, `output` defaults to `FALSE` for a transform or
 #' utility block that feeds another block, `TRUE` otherwise; `code` defaults to
 #' `FALSE`.
+#' Text is a block: each text item becomes a prose block
+#' ([blockr.extra::new_prose_block()]) on the board, so text travels with the
+#' board and can compute with inline R (`` `r expr` ``). A prose block that
+#' names a block above it in its code reads from it; one that names none has
+#' no input.
+#'
 #' A section is the page's one level of headings: it shows in the contents
 #' panel, can be folded, and is what a view is on a dock board. The page's
 #' title is the board's name (the `board_name` option); a first item that is
@@ -54,6 +60,11 @@ new_page_board <- function(blocks = list(), links = list(), stacks = list(),
     options <- with_board_name(options, title)
   }
 
+  # text becomes prose blocks
+  prose <- text_to_prose(items, names(blocks))
+  items <- prose$items
+  blocks <- c(blocks, blockr.core::as_blocks(prose$blocks))
+
   blockr.core::new_board(
     blocks = blocks,
     links = links,
@@ -79,6 +90,31 @@ is_page_board <- function(x) {
 page_items <- function(x) {
   stopifnot(is_page_board(x))
   x[["items"]]
+}
+
+# Each text item as a prose block of its own, with an id that is free on the
+# board: `list(blocks, items)`. Headings stay sections.
+text_to_prose <- function(items, block_ids) {
+  items <- lapply(unclass(items), as_page_item)
+  blocks <- list()
+  for (i in seq_along(items)) {
+    it <- items[[i]]
+    if (is_block_item(it) || is_section_item(it)) next
+    id <- free_id("text", c(block_ids, names(blocks)))
+    blocks[[id]] <- blockr.extra::new_prose_block(it$text, block_name = "Text")
+    items[[i]] <- list(block = id, output = TRUE)
+  }
+  list(blocks = blocks, items = items)
+}
+
+free_id <- function(stem, taken) {
+  i <- 1L
+  while (paste0(stem, "_", i) %in% taken) i <- i + 1L
+  paste0(stem, "_", i)
+}
+
+is_prose_block <- function(x) {
+  inherits(x, "prose_block")
 }
 
 leading_title <- function(items) {

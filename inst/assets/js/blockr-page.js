@@ -252,8 +252,11 @@
           if (node) {
             node.classList.toggle('bp-compact', hidden);
             node.classList.remove('bp-unplaced');
+            // text is a prose block, shown as text
+            const prose = !!(this.state.blocks[it.block] || {}).prose;
+            node.classList.toggle('bp-prose', prose);
             // the report's two switches: Output off makes the block a step
-            node.classList.toggle('bp-step', it.output === false);
+            node.classList.toggle('bp-step', it.output === false && !prose);
             node.classList.toggle('bp-open', it.output === false && this.openSteps.has(it.block));
             node.classList.toggle('bp-code-on', it.code === true);
             seq.push(node);
@@ -294,9 +297,20 @@
         if (node) {
           this.freshDone.add(this.pendingFresh);
           this.pendingFresh = null;
-          node.classList.add('bp-band-open');
-          this.shown(node);
-          setTimeout(() => this.jumpTo(node), 50);
+          if (node.classList.contains('bp-prose')) {
+            // a new text: the cursor in it, once its editor is up
+            let n = 0;
+            const focus = () => {
+              const pm = node.querySelector('.ProseMirror');
+              if (pm) pm.focus();
+              else if (n++ < 40) setTimeout(focus, 50);
+            };
+            focus();
+          } else {
+            node.classList.add('bp-band-open');
+            this.shown(node);
+            setTimeout(() => this.jumpTo(node), 50);
+          }
         }
       }
 
@@ -731,7 +745,7 @@
       };
       const rows = [
         { label: 'Text', meta: 'a paragraph', icon: ICON.text,
-          onSelect: () => { this.pendingEdit = at; this.send({ type: 'add_text', at: at, text: '' }); } },
+          onSelect: () => this.send({ type: 'add_block', at: at, registry: 'new_prose_block', from: '' }) },
         { label: 'Section', meta: 'a heading', icon: ICON.heading,
           onSelect: () => { this.pendingEdit = at; this.send({ type: 'add_section', at: at, text: '' }); } }
       ];
@@ -1073,10 +1087,16 @@
       const wr = this.wrap.getBoundingClientRect();
       const ys = new Map();
       const nodes = [];
+      const leaves = [];
       this.state.items.forEach(it => {
         if (it.block == null) return;
         const el = this.doc.querySelector(`:scope > .bp-blk[data-block-id="${it.block}"]:not(.bp-unplaced)`);
         if (!el) return;
+        // text has no dot; text that reads from a block is a leaf off its line
+        if ((this.state.blocks[it.block] || {}).prose) {
+          if (this.parents(it.block).length) leaves.push({ id: it.block, el });
+          return;
+        }
         const r = el.querySelector('.bp-bh').getBoundingClientRect();
         ys.set(it.block, r.top - wr.top + r.height / 2);
         nodes.push({ id: it.block, from: this.parents(it.block) });
@@ -1101,6 +1121,15 @@
         }
         s += `<path class="bp-edge" data-from="${p}" data-to="${n.id}" d="${d}"/>`;
       }));
+      leaves.forEach(lf => {
+        const yt = lf.el.getBoundingClientRect().top - wr.top + 12;
+        this.parents(lf.id).forEach(p => {
+          if (!ys.has(p)) return;
+          const xp = lx(lane.get(p)), yp = ys.get(p), xt = xp + 14;
+          s += `<path class="bp-edge bp-edge-leaf" data-from="${p}" data-to="${esc(lf.id)}" d="M${xp} ${yp}V${yt - 6}Q${xp} ${yt} ${xp + 6} ${yt}H${xt - 3}"/>` +
+            `<rect class="bp-leaf" data-id="${esc(lf.id)}" x="${xt - 3}" y="${yt - 3}" width="6" height="6" rx="1"/>`;
+        });
+      });
       const steps = new Set(this.state.items.filter(it => it.output === false).map(it => it.block));
       nodes.forEach(n => {
         const x = lx(lane.get(n.id)), y = ys.get(n.id);
@@ -1136,7 +1165,9 @@
         if (it.section != null) {
           h += `<a class="bp-t-h bp-t-h2" data-index="${i}">${esc(it.section)}</a>`;
         } else if (it.block != null) {
-          h += `<a class="bp-t-b" data-block="${esc(it.block)}" data-index="${i}"><i></i>${esc(this.blockName(it.block))}</a>`;
+          if (!(this.state.blocks[it.block] || {}).prose) {
+            h += `<a class="bp-t-b" data-block="${esc(it.block)}" data-index="${i}"><i></i>${esc(this.blockName(it.block))}</a>`;
+          }
         }
       });
       this.toc.innerHTML = h;

@@ -103,7 +103,11 @@ page_callback <- function(board, update, session, ...) {
         act$type,
 
         add_block = {
-          blk <- blockr.core::create_block(act$registry)
+          blk <- if (identical(act$registry, "new_prose_block")) {
+            blockr.extra::new_prose_block(block_name = "Text")
+          } else {
+            blockr.core::create_block(act$registry)
+          }
           bid <- blockr.core::rand_names(blockr.core::board_block_ids(board$board))
           upd <- list(
             blocks = list(add = blockr.core::as_blocks(stats::setNames(list(blk), bid)))
@@ -216,6 +220,65 @@ page_callback <- function(board, update, session, ...) {
     }
   )
 
+  # Text that names a block reads from it. A prose block's code (the
+  # expressions its editor reports as you type) is matched against the blocks
+  # above it: each one named gets a link, input named after the block, so the
+  # name resolves; a link to a block no longer named goes.
+  shiny::observe(
+    {
+      brd <- board$board
+      its <- items()
+      ids <- item_block_ids(its)
+      blks <- blockr.core::board_blocks(brd)
+      lnk <- as.data.frame(blockr.core::board_links(brd))
+      add <- NULL
+      rm <- character()
+      for (id in ids[vapply(blks[ids], is_prose_block, logical(1L))]) {
+        exprs <- unlist(input[[paste0("block_", id, "-expr-prose_exprs")]])
+        above <- ids[seq_len(match(id, ids) - 1L)]
+        named <- intersect(expr_names(exprs), above)
+        have <- lnk[lnk$to == id, , drop = FALSE]
+        new <- setdiff(named, have$from)
+        if (length(new)) {
+          add <- c(add, list(blockr.core::links(from = new, to = rep(id, length(new)),
+                                                input = new)))
+        }
+        rm <- c(rm, have$id[!have$from %in% named])
+      }
+      if (length(add) || length(rm)) {
+        upd <- list()
+        if (length(add)) upd$add <- do.call(c, add)
+        if (length(rm)) upd$rm <- rm
+        update(list(links = upd))
+      }
+    }
+  )
+
+  # What a prose block's code can name: the blocks above it, with their
+  # columns, offered to its editor for completion.
+  shiny::observe(
+    {
+      brd <- board$board
+      its <- items()
+      ids <- item_block_ids(its)
+      blks <- blockr.core::board_blocks(brd)
+      for (id in ids[vapply(blks[ids], is_prose_block, logical(1L))]) {
+        above <- ids[seq_len(match(id, ids) - 1L)]
+        above <- above[!vapply(blks[above], is_prose_block, logical(1L))]
+        objects <- lapply(above, function(b) {
+          res <- tryCatch(board$blocks[[b]]$server$result(), error = function(e) NULL)
+          cols <- if (is.data.frame(res)) colnames(res) else names(res)
+          list(name = blockr.core::block_name(blks[[b]]), cols = as.list(cols))
+        })
+        names(objects) <- above
+        session$sendCustomMessage(
+          "prose-offer",
+          list(id = session$ns(paste0("block_", id, "-expr-editor")), objects = objects)
+        )
+      }
+    }
+  )
+
   # A block with its Code switch on shows its code above its result, as the
   # document will. Sent on its own, so editing a block's settings updates the
   # code without redrawing the page.
@@ -242,6 +305,7 @@ page_callback <- function(board, update, session, ...) {
       if (!isTRUE(src$on)) return()
       fmt <- if (identical(src$fmt, "R")) "R" else "qmd"
       code <- live_block_code(board)
+      prose <- live_prose_text(board)
       session$sendCustomMessage(
         "blockr-page-source",
         list(
@@ -249,7 +313,7 @@ page_callback <- function(board, update, session, ...) {
           fmt = fmt,
           stem = page_file_stem(title()),
           head = page_head(title(), fmt),
-          pieces = page_pieces(items(), board$board, code, fmt)
+          pieces = page_pieces(items(), board$board, code, fmt, prose)
         )
       )
     }
@@ -257,7 +321,8 @@ page_callback <- function(board, update, session, ...) {
 
   source_text <- function(fmt) {
     shiny::isolate(
-      page_document(items(), board$board, live_block_code(board), fmt, title())
+      page_document(items(), board$board, live_block_code(board), fmt, title(),
+                    live_prose_text(board))
     )
   }
 
@@ -299,6 +364,20 @@ live_block_code <- function(board) {
   block_code(exprs, board$board)
 }
 
+# The committed text of every prose block, by block id.
+live_prose_text <- function(board) {
+  prose <- Filter(function(b) is_prose_block(b$block), board$blocks)
+  lapply(prose, function(b) tryCatch(b$server$state$text(), error = function(e) ""))
+}
+
+# The names an R expression uses, for any that do not parse none.
+expr_names <- function(exprs) {
+  unique(unlist(lapply(exprs, function(e) {
+    tryCatch(all.names(parse(text = e, keep.source = FALSE)[[1L]]),
+             error = function(err) character())
+  })))
+}
+
 # The input a new link lands on, as blockr.dock picks it: the first free named
 # input, an unnamed slot for a variadic block, NA when there is none.
 free_input <- function(blk, id, links) {
@@ -331,7 +410,8 @@ page_state <- function(items, board) {
     blocks = Map(
       function(b, id) {
         list(name = blockr.core::block_name(b),
-             free = !is.na(free_input(b, id, link_frame(board, input = TRUE))))
+             free = !is.na(free_input(b, id, link_frame(board, input = TRUE))),
+             prose = is_prose_block(b))
       },
       blks, names(blks)
     ),

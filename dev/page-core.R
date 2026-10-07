@@ -1,12 +1,13 @@
-# blockr.page with blockr.core blocks only: no blockr.dock anywhere.
+# blockr.page with blockr.core blocks only (text is blockr.extra's prose
+# block): no blockr.dock anywhere.
 #
 #   Rscript blockr.page/dev/page-core.R      (from /workspace)
 
 root <- if (dir.exists("blockr.core")) "." else ".."
 
-pkgload::load_all(file.path(root, "blockr.core"), quiet = TRUE)
-pkgload::load_all(file.path(root, "blockr.ui"), quiet = TRUE)
-pkgload::load_all(file.path(root, "blockr.page"), quiet = TRUE)
+for (pkg in c("blockr.core", "blockr.ui", "blockr.extra", "blockr.page")) {
+  pkgload::load_all(file.path(root, pkg), quiet = TRUE)
+}
 
 options(blockr.tabular_display = blockr.ui::html_table_display)
 
