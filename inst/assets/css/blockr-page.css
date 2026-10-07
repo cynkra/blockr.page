@@ -502,3 +502,21 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-blk.bp-selected { box-shadow: 0 0 0 8px var(--bp-bg), 0 0 0 9.5px var(--bp-accent-200); }
 .bp-blk .bp-bh .bp-bname { cursor: pointer; }
 .blockr-page.bp-read .bp-blk .bp-bh .bp-bname { cursor: auto; }
+
+/* ---- find and replace in the texts: Cmd/Ctrl+F ------------------------------------ */
+.bp-find {
+  display: none; position: absolute; top: 10px; right: 24px; z-index: 30; background: var(--bp-bg);
+  border: 1px solid var(--bp-border); border-radius: 10px; padding: 6px; gap: 6px; flex-direction: column;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, .1);
+}
+.bp-find.bp-show { display: flex; }
+.bp-find-row { display: flex; align-items: center; gap: 4px; }
+.bp-find .blockr-input__field { width: 220px; font-family: inherit; }
+.bp-find-n { font-size: 12px; color: var(--bp-muted); min-width: 64px; text-align: right; padding: 0 4px; font-variant-numeric: tabular-nums; }
+.bp-find-t { border: 0; background: none; font: inherit; font-size: 12.5px; color: var(--bp-text-2); padding: 3px 8px; border-radius: 6px; cursor: pointer; }
+.bp-find-t:hover { background: var(--bp-hover); }
+.bp-find-rep { display: none; }
+.bp-find.bp-find-open .bp-find-rep { display: flex; }
+.bp-find.bp-find-ro [data-find="toggle"] { display: none; }
+::highlight(bp-find) { background-color: #fef08a; }
+::highlight(bp-find-cur) { background-color: #fbbf24; }

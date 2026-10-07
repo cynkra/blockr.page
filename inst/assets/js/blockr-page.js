@@ -453,6 +453,13 @@
         e.preventDefault();
         this.send({ type: k === 'y' || e.shiftKey ? 'redo' : 'undo' });
       });
+      // Cmd/Ctrl+F: find, and replace, in the page's texts.
+      document.addEventListener('keydown', e => {
+        if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key || '').toLowerCase() !== 'f') return;
+        if (!this.el.isConnected) return;
+        e.preventDefault();
+        this.openFind();
+      });
       // Escape closes the panel, unless a menu or a field has it.
       document.addEventListener('keydown', e => {
         if (e.key !== 'Escape' || !this.panelFor || this.openMenu || e.defaultPrevented) return;
@@ -1141,6 +1148,117 @@
         (from.length ? '<div class="bp-ip-lab">Reads from</div>' +
           from.map(f => `<button type="button" class="bp-ip-from" data-from="${esc(f)}">${esc(this.blockName(f))}</button>`).join('') : '');
       this._panel.querySelector('.bp-ip-name').textContent = this.blockName(id);
+    }
+
+    /* ---- find and replace in the texts ------------------------------------------- */
+    findBar() {
+      if (this._find) return this._find;
+      const f = document.createElement('div');
+      f.className = 'bp-find';
+      f.innerHTML =
+        '<div class="bp-find-row"><span class="blockr-input"><input class="blockr-input__field bp-find-q" type="text" placeholder="Find in the text" aria-label="Find"></span>' +
+        '<span class="bp-find-n"></span>' +
+        `<button type="button" class="bp-hb" data-find="prev" aria-label="Previous">${ICON.up}</button>` +
+        `<button type="button" class="bp-hb" data-find="next" aria-label="Next">${ICON.down}</button>` +
+        '<button type="button" class="bp-find-t" data-find="toggle">Replace</button>' +
+        `<button type="button" class="bp-hb" data-find="close" aria-label="Close">${ICON.close}</button></div>` +
+        '<div class="bp-find-row bp-find-rep"><span class="blockr-input"><input class="blockr-input__field bp-find-r" type="text" placeholder="Replace with" aria-label="Replace with"></span>' +
+        '<button type="button" class="bp-find-t" data-find="one">Replace</button>' +
+        '<button type="button" class="bp-find-t" data-find="all">All</button></div>';
+      const q = f.querySelector('.bp-find-q'), r = f.querySelector('.bp-find-r');
+      q.addEventListener('input', () => this.runFind(0));
+      f.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); this.closeFind(); } });
+      const keys = e => {
+        if (e.key === 'Enter' && e.target === q) { e.preventDefault(); this.stepFind(e.shiftKey ? -1 : 1); }
+        else if (e.key === 'Enter' && e.target === r) { e.preventDefault(); this.replaceFind(false); }
+      };
+      q.addEventListener('keydown', keys);
+      r.addEventListener('keydown', keys);
+      f.addEventListener('click', e => {
+        const b = e.target.closest('[data-find]');
+        if (!b) return;
+        const a = b.dataset.find;
+        if (a === 'prev' || a === 'next') this.stepFind(a === 'prev' ? -1 : 1);
+        if (a === 'close') this.closeFind();
+        if (a === 'toggle') { f.classList.toggle('bp-find-open'); if (f.classList.contains('bp-find-open')) r.focus(); }
+        if (a === 'one') this.replaceFind(false);
+        if (a === 'all') this.replaceFind(true);
+      });
+      this.el.querySelector('.bp-body').appendChild(f);
+      this._find = f;
+      return f;
+    }
+    openFind() {
+      const f = this.findBar();
+      f.classList.add('bp-show');
+      f.classList.toggle('bp-find-ro', this.read);
+      const q = f.querySelector('.bp-find-q');
+      const sel = String(document.getSelection() || '').trim();
+      if (sel && sel.length < 80 && !sel.includes('\n')) q.value = sel;
+      q.focus();
+      q.select();
+      this.runFind(0);
+    }
+    closeFind() {
+      if (!this._find) return;
+      this._find.classList.remove('bp-show');
+      this.matches = [];
+      if (window.CSS && CSS.highlights) { CSS.highlights.delete('bp-find'); CSS.highlights.delete('bp-find-cur'); }
+    }
+    // every match in the texts, in reading order
+    runFind(at) {
+      const q = this._find.querySelector('.bp-find-q').value;
+      this.matches = [];
+      if (q) {
+        this.state.items.forEach(it => {
+          if (!this.isProse(it)) return;
+          const p = this.proseOf(it.block);
+          if (p) p.find(q).forEach(m => this.matches.push(Object.assign({ block: it.block }, m)));
+        });
+      }
+      this.matchAt = Math.min(Math.max(0, at), Math.max(0, this.matches.length - 1));
+      this.paintFind(true);
+    }
+    stepFind(d) {
+      if (!this.matches || !this.matches.length) return;
+      this.matchAt = (this.matchAt + d + this.matches.length) % this.matches.length;
+      this.paintFind(true);
+    }
+    paintFind(scroll) {
+      const n = this.matches.length;
+      const q = this._find.querySelector('.bp-find-q').value;
+      this._find.querySelector('.bp-find-n').textContent = !q ? '' : n ? `${this.matchAt + 1} of ${n}` : 'No match';
+      const range = m => { const p = this.proseOf(m.block); return p && p.rangeOf(m); };
+      const cur = n ? this.matches[this.matchAt] : null;
+      if (cur && scroll) {
+        const node = this.blockNode(cur.block);
+        if (node && node.classList.contains('bp-compact')) this.jumpBlock(cur.block);
+        const r = range(cur), sr = this.scrollEl.getBoundingClientRect();
+        if (r) {
+          const b = r.getBoundingClientRect();
+          if (b.top < sr.top + 70 || b.bottom > sr.bottom - 40) this.scrollEl.scrollTop += b.top - sr.top - sr.height / 3;
+        }
+      }
+      if (window.CSS && CSS.highlights && window.Highlight) {
+        CSS.highlights.set('bp-find', new Highlight(...this.matches.map(range).filter(Boolean)));
+        const c = cur && range(cur);
+        if (c) CSS.highlights.set('bp-find-cur', new Highlight(c)); else CSS.highlights.delete('bp-find-cur');
+      }
+    }
+    replaceFind(all) {
+      if (this.read || !this.matches || !this.matches.length) return;
+      const r = this._find.querySelector('.bp-find-r').value;
+      if (!all) {
+        const m = this.matches[this.matchAt];
+        const p = this.proseOf(m.block);
+        if (p) p.replaceRange(m, r);
+        return this.runFind(this.matchAt);
+      }
+      // from the last match back, so the positions before it stay put
+      const n = this.matches.length;
+      this.matches.slice().reverse().forEach(m => { const p = this.proseOf(m.block); if (p) p.replaceRange(m, r); });
+      this.runFind(0);
+      this.toast(n === 1 ? 'Replaced 1 match.' : `Replaced ${n} matches.`);
     }
 
     // A table cell: "Use in text" puts it in the text as inline R, so it
