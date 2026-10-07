@@ -419,6 +419,7 @@
       // on to the next text, Backspace and Delete join two texts that touch.
       this.doc.addEventListener('prose-edge', e => this.onEdge(e));
       this.doc.addEventListener('prose-slash', e => this.onSlash(e));
+      this.doc.addEventListener('prose-at', e => this.onAt(e));
       // A text left empty goes.
       this.doc.addEventListener('focusout', e => {
         const host = e.target.closest && e.target.closest('.bp-blk.bp-prose');
@@ -923,13 +924,7 @@
     slashMenu(host, i, rect, typed) {
       const prose = host.querySelector('.blockr-prose').blockrProse;
       if (!prose) return;
-      const pr = this.el.getBoundingClientRect();
-      const a = document.createElement('span');
-      a.className = 'bp-caret-anchor';
-      a.style.left = (rect.left - pr.left) + 'px';
-      a.style.top = (rect.top - pr.top) + 'px';
-      a.style.height = Math.max(16, rect.bottom - rect.top) + 'px';
-      this.el.appendChild(a);
+      const a = this.caretAnchor(rect);
       this.slashing = host;
       this.hidePlus();
       let picked = false, query = '', erased = false;
@@ -961,6 +956,79 @@
           if (ev.key === 'Backspace' && !f.value) { ev.preventDefault(); erased = true; this.closeMenu(); }
         });
       }
+    }
+
+    // A point to hang a menu on: the cursor's place in a text.
+    caretAnchor(rect) {
+      const pr = this.el.getBoundingClientRect();
+      const a = document.createElement('span');
+      a.className = 'bp-caret-anchor';
+      a.style.left = (rect.left - pr.left) + 'px';
+      a.style.top = (rect.top - pr.top) + 'px';
+      a.style.height = Math.max(16, rect.bottom - rect.top) + 'px';
+      this.el.appendChild(a);
+      return a;
+    }
+
+    /* ---- "@" in a text: a value from a block above ------------------------------- */
+    onAt(e) {
+      if (this.read) return;
+      const host = e.target.closest('.bp-blk.bp-prose');
+      const i = host ? this.itemIndexOf(host) : -1;
+      if (i < 0) return;
+      const above = this.state.items.slice(0, i)
+        .filter(it => it.block != null && !this.isProse(it)).map(it => it.block).reverse();
+      if (!above.length) return;
+      e.preventDefault();
+      const prose = host.querySelector('.blockr-prose').blockrProse;
+      const a = this.caretAnchor(e.detail);
+      this.slashing = host;
+      let picked = false, query = '', done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        a.remove();
+        this.slashing = null;
+        if (!picked) prose.typeHere('@' + query);
+      };
+      const pick = (expr, open) => { picked = true; prose.insertChip(expr, open); };
+      this.menu(a, {
+        caption: 'A value from',
+        filter: 'Search blocks', minWidth: 280,
+        items: above.map(id => ({
+          label: this.blockName(id),
+          onSelect: () => this.valuesMenu(a, id, pick, finish)
+        })),
+        // a pick waits for the block's values, and the menu they fill
+        onClose: () => setTimeout(() => { if (!this.openMenu && !this._valuesCb) finish(); }, 0)
+      });
+      const f = this.openMenu && this.openMenu.el && this.openMenu.el.querySelector('.blockr-menu__filter-input');
+      if (f) f.addEventListener('input', () => { query = f.value; });
+    }
+
+    // The values block `id` reports, from R, each with its value now.
+    valuesMenu(anchor, id, pick, finish) {
+      this._valuesFor = id;
+      this._valuesCb = values => {
+        const rows = values.map(v => ({ label: v.label, meta: v.value, keywords: v.expr,
+          onSelect: () => pick(v.expr) }));
+        if (rows.length) rows.push({ divider: true });
+        rows.push({ label: 'Your own code…', meta: id, mono: true, onSelect: () => pick(id, true) });
+        this.menu(anchor, {
+          caption: this.blockName(id), filter: values.length > 6 ? 'Search values' : false,
+          minWidth: 300, items: rows,
+          onClose: () => setTimeout(() => { if (!this.openMenu) finish(); }, 0)
+        });
+      };
+      if (window.Shiny && Shiny.setInputValue) {
+        Shiny.setInputValue(this.ns + 'page_values_req', { id: id, nonce: Math.random() }, { priority: 'event' });
+      }
+    }
+    gotValues(msg) {
+      if (msg.id !== this._valuesFor || !this._valuesCb) return;
+      const cb = this._valuesCb;
+      this._valuesCb = null;
+      cb(msg.values || []);
     }
 
     plusBtn() {
@@ -1427,6 +1495,7 @@
     if (!window.Shiny || !Shiny.addCustomMessageHandler) return false;
     Shiny.addCustomMessageHandler('blockr-page', msg => { const p = pageFor(msg.target); if (p) p.update(msg); });
     Shiny.addCustomMessageHandler('blockr-page-toast', msg => { const p = pageFor(msg.target); if (p) p.toast(msg.msg); });
+    Shiny.addCustomMessageHandler('blockr-page-values', msg => { const p = pageFor(msg.target); if (p) p.gotValues(msg); });
     Shiny.addCustomMessageHandler('blockr-page-code', msg => {
       const p = pageFor(msg.target);
       if (!p) return;

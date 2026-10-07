@@ -309,6 +309,17 @@ page_callback <- function(board, update, session, ...) {
     }
   )
 
+  # "@" in a text asks what a block reports: its values, computed now.
+  shiny::observeEvent(input$page_values_req, {
+    id <- input$page_values_req$id
+    res <- tryCatch(board$blocks[[id]]$server$result(), error = function(e) NULL)
+    session$sendCustomMessage(
+      "blockr-page-values",
+      list(target = target, id = id,
+           values = if (is.null(res)) list() else page_values_now(res, id))
+    )
+  })
+
   # What a prose block's code can name: the blocks above it, with their
   # columns, offered to its editor for completion.
   shiny::observe(

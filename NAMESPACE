@@ -10,17 +10,24 @@ S3method(blockr.core::board_ui,page_board)
 S3method(blockr.core::insert_block_ui,page_board)
 S3method(blockr.core::remove_block_ui,page_board)
 S3method(blockr.core::serialize_board,page_board)
+S3method(page_values,data.frame)
+S3method(page_values,default)
+S3method(page_values,htest)
+S3method(page_values,lm)
 S3method(print,page_items)
 export(is_page_board)
 export(new_page_board)
 export(page_items)
-importFrom(blockr.core,block_ui)
-importFrom(blockr.core,blockr_app_ui)
-importFrom(blockr.core,blockr_deser)
-importFrom(blockr.core,blockr_ser)
-importFrom(blockr.core,board_plugins)
-importFrom(blockr.core,board_server)
-importFrom(blockr.core,board_ui)
-importFrom(blockr.core,insert_block_ui)
-importFrom(blockr.core,remove_block_ui)
-importFrom(blockr.core,serialize_board)
+export(page_values)
+importFrom(blockr.core,
+  block_ui,
+  blockr_app_ui,
+  blockr_deser,
+  blockr_ser,
+  board_plugins,
+  board_server,
+  board_ui,
+  insert_block_ui,
+  remove_block_ui,
+  serialize_board
+)
