@@ -178,7 +178,7 @@ page_callback <- function(board, update, session, ...) {
         act$type,
 
         add_block = {
-          blk <- page_new_block(act$registry, act$text)
+          blk <- page_new_block(act$registry)
           bid <- blockr.core::rand_names(blockr.core::board_block_ids(board$board))
           upd <- list(
             blocks = list(add = blockr.core::as_blocks(stats::setNames(list(blk), bid)))
@@ -601,12 +601,10 @@ free_input <- function(blk, id, links) {
   if (length(free)) free[1L] else NA_character_
 }
 
-# A block for the page's menus: a text is a prose block named "Text",
-# with `text` in it.
-page_new_block <- function(registry, text = NULL) {
+# A block for the page's menus: a text is a prose block named "Text".
+page_new_block <- function(registry) {
   if (identical(registry, "new_prose_block")) {
-    blockr.extra::new_prose_block(if (is.null(text)) character() else text,
-                                  block_name = "Text")
+    blockr.extra::new_prose_block(block_name = "Text")
   } else {
     blockr.core::create_block(registry)
   }
