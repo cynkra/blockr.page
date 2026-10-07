@@ -131,9 +131,11 @@ page_pieces <- function(items, board, code, fmt = "qmd", prose = list(),
       # a chart the browser draws prints nothing in the document
       out <- isTRUE(it$output) && !browser_drawn(blks[[id]])
       show <- if (out) id
-      # a figure or a table: Quarto numbers it, and text refers to it by label
-      kind <- if (out) kinds[[id]]
-      cap <- if (is.null(it$caption)) blockr.core::block_name(blks[[id]]) else it$caption
+      # a captioned figure or table: Quarto numbers it, and text refers to it
+      # by label
+      # numbered when it has a caption, as on the page
+      kind <- if (out && !is.null(it$caption)) kinds[[id]]
+      cap <- it$caption
       pre <- c(figure = "fig", table = "tbl")[kind]
       lab <- if (length(pre) && !is.na(pre)) paste0(pre, "-", id) else id
       if (spin) {

@@ -1769,13 +1769,15 @@
     }
 
     /* ---- figures and tables: numbers and captions ---------------------------------- */
-    // Every block that shows a figure or a table, numbered in reading order.
-    numbers() {
+    // Every captioned figure and table, numbered in reading order, as Quarto
+    // numbers them. `pending`: a block whose caption is being written counts
+    // too, so it shows the number it will get.
+    numbers(pending) {
       const kinds = this.kinds || {};
       const n = { figure: 0, table: 0 }, out = {};
       this.state.items.forEach(it => {
         const k = it.block != null && it.output !== false && kinds[it.block];
-        if (!k || this.isProse(it)) return;
+        if (!k || this.isProse(it) || !(it.caption || it.block === pending)) return;
         n[k]++;
         out[it.block] = { kind: k, n: n[k], label: (k === 'figure' ? 'Figure ' : 'Table ') + n[k], caption: it.caption || '' };
       });
@@ -1786,24 +1788,31 @@
       this.paintCaptions();
       this.buildToc();
     }
-    // A caption under each: "Figure 2." and its text, typed in place.
+    // A caption is optional. Without one, pointing at a figure or a table
+    // shows "Add caption" under it; with one, "Figure 2." and its text, which
+    // a click edits. A caption left empty goes, and so does its number.
     paintCaptions() {
       const nums = this.numbers();
       this._nums = nums;
-      // what a reference in a text shows: its figure's or table's number
       const refs = {};
       Object.entries(nums).forEach(([id, n]) => { refs['fig-' + id] = n.label; refs['tbl-' + id] = n.label; });
       const any = this.doc.querySelector('.blockr-prose');
       if (any && any.blockrProse) any.blockrProse.setRefs(refs);
+      const kinds = this.kinds || {};
       this.doc.querySelectorAll(':scope > .bp-blk').forEach(node => {
         const id = node.dataset.blockId, num = nums[id];
+        const it = this.state.items.find(x => x.block === id);
+        const can = it && it.output !== false && kinds[id] && !this.isProse(it);
         let cap = node.querySelector(':scope > .bp-cap');
-        if (!num) { if (cap) cap.remove(); return; }
+        if (!can || (this.read && !num)) { if (cap) cap.remove(); return; }
         if (!cap) {
           cap = document.createElement('div');
           cap.className = 'bp-cap';
-          cap.innerHTML = '<b class="bp-cap-n"></b> <span class="bp-cap-t" spellcheck="true"></span>';
+          cap.innerHTML = '<button type="button" class="bp-cap-add">Add caption</button>' +
+            '<b class="bp-cap-n"></b> <span class="bp-cap-t" spellcheck="true"></span>';
           const t = cap.querySelector('.bp-cap-t');
+          cap.querySelector('.bp-cap-add').addEventListener('click', () => this.editCaption(id));
+          cap.querySelector('.bp-cap-n').addEventListener('click', () => this.editCaption(id));
           t.addEventListener('keydown', e => {
             if (e.key === 'Enter' || e.key === 'Escape') {
               e.preventDefault();
@@ -1813,23 +1822,40 @@
           });
           t.addEventListener('blur', () => {
             const txt = t.textContent.trim(), i = this.state.items.findIndex(x => x.block === id);
+            this._captioning = null;
             if (i >= 0 && txt !== (t.dataset.was || '')) {
               t.dataset.was = txt;
               this.send({ type: 'caption', index: i, text: txt });
             }
+            this.paintCaptions();
           });
           node.appendChild(cap);
         }
         const t = cap.querySelector('.bp-cap-t');
+        const writing = this._captioning === id;
         t.contentEditable = this.read ? 'false' : 'plaintext-only';
-        t.dataset.ph = 'Add a caption';
-        cap.querySelector('.bp-cap-n').textContent = num.label + '.';
-        if (document.activeElement !== t) {
-          t.textContent = num.caption;
-          t.dataset.was = num.caption;
+        cap.classList.toggle('bp-cap-none', !num && !writing);
+        if (num) {
+          cap.querySelector('.bp-cap-n').textContent = num.label + '.';
+          if (document.activeElement !== t) { t.textContent = num.caption; t.dataset.was = num.caption; }
         }
-        cap.classList.toggle('bp-cap-empty', !num.caption);
       });
+    }
+    // Write a block's caption: its number as it will be, the cursor in the text.
+    editCaption(id) {
+      if (this.read) return;
+      this._captioning = id;
+      const node = this.blockNode(id);
+      const cap = node && node.querySelector(':scope > .bp-cap');
+      if (!cap) return;
+      const num = this.numbers(id)[id];
+      cap.classList.remove('bp-cap-none');
+      cap.querySelector('.bp-cap-n').textContent = num ? num.label + '.' : '';
+      const t = cap.querySelector('.bp-cap-t');
+      t.focus();
+      const sel = document.getSelection();
+      sel.selectAllChildren(t);
+      sel.collapseToEnd();
     }
 
     /* ---- contents ----------------------------------------------------------------------- */

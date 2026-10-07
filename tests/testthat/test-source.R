@@ -100,7 +100,11 @@ test_that("a figure or a table gets a Quarto label and caption", {
   qmd <- page_pieces(its, brd, code, "qmd", kinds = list(cars = "table"))[[1]]
   expect_match(qmd, "#| label: tbl-cars", fixed = TRUE)
   expect_match(qmd, "#| tbl-cap: \"The cars\"", fixed = TRUE)
-  # without a kind, the label is the block's id and there is no caption
+  # without a caption, or without a kind, the label is the block's id
+  plain <- page_items(new_page_board(blocks = c(cars = blockr.core::new_dataset_block("mtcars"))))
+  qmd <- page_pieces(plain, brd, code, "qmd", kinds = list(cars = "table"))[[1]]
+  expect_match(qmd, "#| label: cars", fixed = TRUE)
+  expect_no_match(qmd, "cap:")
   qmd <- page_pieces(its, brd, code, "qmd")[[1]]
   expect_match(qmd, "#| label: cars", fixed = TRUE)
   expect_no_match(qmd, "cap:")
