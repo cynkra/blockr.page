@@ -415,6 +415,20 @@
         if (e.key === 'k' && (e.ctrlKey || e.metaKey) && !one) { e.preventDefault(); this.fmt('link'); }
         if (e.key === 'Escape') { e.preventDefault(); this.finishEdit(false); }
       });
+      // The texts read as one document: at a text's edge the arrow keys go
+      // on to the next text, Backspace and Delete join two texts that touch.
+      this.doc.addEventListener('prose-edge', e => this.onEdge(e));
+      // A text left empty goes.
+      this.doc.addEventListener('focusout', e => {
+        const host = e.target.closest && e.target.closest('.bp-blk.bp-prose');
+        if (host && !this.read) setTimeout(() => this.dropIfEmpty(host), 0);
+      });
+      // Below the last item is where the next sentence goes.
+      this.wrap.addEventListener('click', e => {
+        if (this.read || (e.target !== this.wrap && e.target !== this.doc)) return;
+        const last = this.doc.lastElementChild;
+        if (last && e.clientY > last.getBoundingClientRect().bottom) this.writeAt(this.state.items.length);
+      });
       // Pasted text comes in plain.
       this.doc.addEventListener('paste', e => {
         if (!e.target.closest('.bp-ed')) return;
@@ -568,6 +582,9 @@
       const blk = t.closest('.bp-blk');
       if (this.read) return;
       if (t.closest('.bp-insbtn')) return this.insertMenu(+t.closest('.bp-ins').dataset.at, t.closest('.bp-insbtn'));
+      // a click in the space between two items writes there
+      const gap = t.closest('.bp-ins');
+      if (gap && !gap.classList.contains('bp-ins-last')) return this.writeAt(+gap.dataset.at);
       if (t.closest('.bp-handle')) {
         if (this._dragged) { this._dragged = false; return; }
         return this.itemMenu(this.itemIndexOf(t), t.closest('.bp-handle'));
@@ -608,6 +625,83 @@
       if (txt && !t.closest('a')) {
         this.editing = +txt.dataset.index;
         this.render();
+      }
+    }
+
+    /* ---- the texts as one document ---------------------------------------------- */
+    isProse(it) { return !!it && it.block != null && !!(this.state.blocks[it.block] || {}).prose; }
+    blockNode(id) { return this.doc.querySelector(`:scope > .bp-blk[data-block-id="${CSS.escape(id)}"]`); }
+    proseOf(id) {
+      const n = this.blockNode(id);
+      const el = n && n.querySelector('.blockr-prose');
+      return el ? el.blockrProse : null;
+    }
+    // the nearest text before (step -1) or after (+1) item i that shows
+    textNear(i, step) {
+      const items = this.state.items;
+      for (let j = i + step; j >= 0 && j < items.length; j += step) {
+        if (!this.isProse(items[j])) continue;
+        const n = this.blockNode(items[j].block);
+        if (n && !n.classList.contains('bp-compact')) return j;
+      }
+      return -1;
+    }
+    focusItem(j, where, x) {
+      const p = this.proseOf(this.state.items[j].block);
+      if (p) p.focusAt(where, x);
+    }
+    // Writing at gap `at`: in the text that touches it, or in a new one.
+    writeAt(at) {
+      const items = this.state.items;
+      if (at > 0 && this.isProse(items[at - 1])) return this.focusItem(at - 1, 'end');
+      if (at < items.length && this.isProse(items[at])) return this.focusItem(at, 'start');
+      this.send({ type: 'add_block', at: at, registry: 'new_prose_block', from: '' });
+    }
+    dropIfEmpty(host) {
+      if (!host.isConnected || host.contains(document.activeElement)) return;
+      const p = host.querySelector('.blockr-prose');
+      const inst = p && p.blockrProse;
+      if (!inst || inst.field || !inst.isEmpty()) return;
+      const i = this.itemIndexOf(host);
+      if (i >= 0) this.send({ type: 'remove', index: i });
+    }
+    onEdge(e) {
+      if (this.read) return;
+      const blk = e.target.closest('.bp-blk');
+      const i = blk ? this.itemIndexOf(blk) : -1;
+      if (i < 0) return;
+      const { dir, x, empty } = e.detail;
+      const items = this.state.items;
+      if (dir === 'up' || dir === 'left' || dir === 'down' || dir === 'right') {
+        const back = dir === 'up' || dir === 'left';
+        const j = this.textNear(i, back ? -1 : 1);
+        if (j < 0) return;
+        e.preventDefault();
+        const where = { up: 'last', left: 'end', down: 'first', right: 'start' }[dir];
+        return this.focusItem(j, where, x);
+      }
+      if (dir === 'back') {
+        if (i > 0 && this.isProse(items[i - 1])) {
+          const a = this.proseOf(items[i - 1].block), b = this.proseOf(items[i].block);
+          if (!a || !b) return;
+          e.preventDefault();
+          a.join(b.text());
+          return this.send({ type: 'remove', index: i });
+        }
+        if (empty) {
+          e.preventDefault();
+          const j = this.textNear(i, -1);
+          if (j >= 0) this.focusItem(j, 'end');
+          return this.send({ type: 'remove', index: i });
+        }
+        return;
+      }
+      if (dir === 'forward' && i + 1 < items.length && this.isProse(items[i + 1])) {
+        const a = this.proseOf(items[i].block), b = this.proseOf(items[i + 1].block);
+        if (!a || !b) return;
+        e.preventDefault();
+        a.join(b.text());
+        this.send({ type: 'remove', index: i + 1 });
       }
     }
 

@@ -229,6 +229,9 @@ svg .bp-dot-step { cursor: grab; }
 .bp-blk.bp-hover .bp-handle, .bp-text.bp-hover > .bp-handle, .bp-handle:focus-visible { opacity: 1; }
 
 .bp-ins { position: relative; height: 14px; }
+/* the space between two items is where you write: a click puts a text there */
+.bp-ins:not(.bp-ins-last) { cursor: text; }
+.blockr-page.bp-read .bp-ins { cursor: auto; }
 .bp-insline { position: absolute; left: 0; right: 0; top: 6px; height: 2px; border-radius: 1px; }
 /* a gap: a hover button in the gutter while the pointer is on it, no line */
 .bp-insbtn { position: absolute; left: -27px; top: -2px; opacity: 0; }
@@ -437,9 +440,9 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-src-head { margin-top: 0; }
 
 /* ---- text: a prose block shown as text ------------------------------------------
-   No card header, no field: the editor is the paragraph, edited where it
-   stands on the tint text has under the pointer. Its rendered result and the
-   raw markdown stay out of the page. */
+   No card header, no field, no tint: the editor is the paragraph, and the
+   page reads the same while you write in it. Its rendered result and the raw
+   markdown stay out of the page. */
 .bp-blk.bp-prose { margin: 0 0 10px; }
 .bp-blk.bp-prose > .bp-bh, .bp-blk.bp-prose > .bp-out, .bp-blk.bp-prose > .bp-codeview,
 .bp-blk.bp-prose .blockr-prose-source { display: none !important; }
@@ -454,9 +457,8 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-blk.bp-prose .blockr-prose-editor .ProseMirror { line-height: 1.65; }
 .bp-blk.bp-prose .blockr-prose-editor p { margin: 0 0 8px; }
 .bp-blk.bp-prose .blockr-prose-editor p:last-child { margin-bottom: 0; }
-.bp-blk.bp-prose.bp-hover .blockr-prose-editor { background: var(--bp-bg-subtle); box-shadow: 0 0 0 6px var(--bp-bg-subtle); }
-.bp-blk.bp-prose .blockr-prose-editor:focus-within { background: #f6f7f9; box-shadow: 0 0 0 8px #f6f7f9; border-color: transparent; }
-.blockr-page.bp-read .bp-blk.bp-prose .blockr-prose-editor { background: none; box-shadow: none; }
+.bp-blk.bp-prose .blockr-prose-editor:focus-within { background: none; box-shadow: none; border-color: transparent; }
+.bp-blk.bp-prose .blockr-prose-editor .ProseMirror { outline: none; caret-color: var(--bp-text); }
 /* the leaf in the gutter: text that reads from a block */
 .bp-edge-leaf { stroke-dasharray: 2 3; }
 .bp-leaf { fill: var(--bp-bg); stroke: #c4c9d0; stroke-width: 1.5; }
