@@ -10,6 +10,7 @@
 (function () {
   'use strict';
 
+
   const LANE_COLORS = ['#9ca3af', '#2563eb', '#0d9488', '#7c3aed', '#b45309', '#be185d'];
   const SVG_NS = 'http://www.w3.org/2000/svg';
 

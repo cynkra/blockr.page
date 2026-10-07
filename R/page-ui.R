@@ -238,8 +238,16 @@ page_dep <- function() {
       src = "assets",
       package = "blockr.page",
       script = "js/blockr-page.js",
-      stylesheet = "css/blockr-page.css",
-      all_files = FALSE
+      # the font files travel with the dependency (all_files), and the
+      # common Latin face is preloaded so charts measure their text in it
+      stylesheet = c("css/blockr-page-font.css", "css/blockr-page.css"),
+      head = paste0(
+        '<link rel="preload" as="font" type="font/woff2" crossorigin ',
+        'href="blockr-page-',
+        as.character(utils::packageVersion("blockr.page")),
+        '/fonts/inter-normal-latin.woff2">'
+      ),
+      all_files = TRUE
     )
   )
 }

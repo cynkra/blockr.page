@@ -9,6 +9,9 @@ render to HTML.
 blockr.page builds on blockr.core and blockr.ui only. It does not use
 blockr.dock.
 
+The page is set in Inter, bundled with the package (SIL Open Font License,
+`inst/assets/fonts/OFL.txt`); blockr's dashboards keep Open Sans.
+
 ## Try it
 
 From a directory that holds the blockr checkouts:

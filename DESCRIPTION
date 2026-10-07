@@ -1,8 +1,11 @@
 Package: blockr.page
 Title: A Document View for 'blockr' Boards
-Version: 0.0.6
-Authors@R:
-    person("Christoph", "Sax", , "christoph@cynkra.com", role = c("aut", "cre"))
+Version: 0.0.9
+Authors@R: c(
+    person("Christoph", "Sax", , "christoph@cynkra.com", role = c("aut", "cre")),
+    person("The Inter Project Authors", role = "cph",
+           comment = "Inter typeface, inst/assets/fonts, SIL Open Font License 1.1")
+  )
 Description: Shows a 'blockr' board as one linear document: blocks in reading
     order with text in between, the board's graph drawn in a gutter beside the
     text. Adding a block in the document adds it to the board. Runs on

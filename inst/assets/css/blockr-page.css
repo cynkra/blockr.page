@@ -1,6 +1,17 @@
 /* blockr.page: the board as one linear document. Colours read the blockr.ui
    tokens; the literal after each is the light-scheme value. */
 
+/* ---- type: Inter for the whole document -------------------------------------------
+   Set on the root, so everything that takes the body's font follows: the
+   block cards, the menus portalled to <body>, and blockr.viz charts, which
+   read the body's font when they draw. Inter's tracking, about -0.011em at
+   15px and -0.006em at 13px; the optical-size axis gives large headings the
+   display cut. */
+:root:root {
+  --bs-body-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+body { font-family: var(--bs-body-font-family); font-optical-sizing: auto; }
+
 .blockr-page {
   --bp-text: var(--blockr-color-text-default, #111827);
   --bp-text-2: var(--blockr-color-text-secondary, #374151);
@@ -19,8 +30,9 @@
   flex-direction: column;
   background: var(--bp-bg);
   color: var(--bp-text);
-  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--bs-body-font-family);
   font-size: var(--blockr-font-size-base, 14px);
+  letter-spacing: -0.006em;
 }
 
 /* ---- top bar: blockr.dock's navbar (feat/navbar-views) ------------------------- */
@@ -402,3 +414,16 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .blockr-page.bp-read .bp-text { cursor: default; }
 .blockr-page.bp-read .bp-text:hover { background: none; box-shadow: none; }
 
+
+
+/* ---- type details --------------------------------------------------------------------- */
+.bp-text p, .bp-text li { letter-spacing: -0.011em; }
+.bp-text h1 { letter-spacing: -0.022em; }
+.bp-text h2 { letter-spacing: -0.017em; font-weight: 650; }
+.bp-text h3 { letter-spacing: -0.014em; font-weight: 650; }
+.bp-src, .bp-codeview, .blockr-page code { letter-spacing: 0; }
+/* tabular figures on number cells only: Inter's tnum also widens the hyphen,
+   which would space out dates and words like "Non-intervention". blockr.ui's
+   table display does the same on .blockr-td-numeric. */
+.blockr-page .gt_table td.gt_center,
+.blockr-page .gt_table td.gt_right { font-variant-numeric: tabular-nums; }
