@@ -36,6 +36,9 @@ body { font-family: var(--bs-body-font-family); font-optical-sizing: auto; }
   --bp-on-ink: var(--blockr-color-bg-surface, #ffffff);
   position: fixed;
   inset: 0;
+  /* nothing may make the page wider than the screen: on a phone a sideways
+     overflow lets the page pan a little under a vertical swipe */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--bp-bg);
@@ -70,13 +73,18 @@ body { font-family: var(--bs-body-font-family); font-optical-sizing: auto; }
 .bp-export { color: var(--bp-muted); }
 .blockr-page.bp-readonly .bp-name { pointer-events: none; }
 .blockr-page.bp-readonly .bp-name .bp-chevron { display: none; }
-.bp-views { display: inline-flex; gap: 6px; }
+.bp-views { display: inline-flex; gap: 6px; flex: none; }
+/* the page's name gives way when the bar is short of room */
+.bp-nav > * { flex-shrink: 0; }
+.bp-nav > .bp-name { flex-shrink: 1; min-width: 0; }
+.bp-name .bp-nm { min-width: 0; }
 .blockr-page.bp-read .bp-v-graph, .blockr-page.bp-read .bp-v-code { display: none; }
 .bp-offscreen { position: absolute; left: -10000px; top: 0; width: 1px; overflow: hidden; }
 
 /* ---- body: document + contents ------------------------------------------- */
 .bp-body { flex: 1; display: flex; min-height: 0; position: relative; }
-.bp-scroll { flex: 1; overflow: auto; position: relative; }
+/* the document scrolls down only; a wide table scrolls sideways in its block */
+.bp-scroll { flex: 1; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; position: relative; }
 .bp-docwrap {
   position: relative;
   max-width: calc(760px + var(--bp-gutter, 70px));
@@ -177,7 +185,7 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 .bp-blk.bp-flash { box-shadow: 0 0 0 8px var(--bp-hover); }
 .bp-bh { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0; }
 .bp-bname {
-  font-size: 12.5px; font-weight: 500; color: var(--bp-muted);
+  min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--bp-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .bp-gh { opacity: 0; }
@@ -216,7 +224,7 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 /* ---- a step: Output off. One line, its name, opens to its settings ---- */
 .bp-blk.bp-step { margin: 6px 0; }
 .bp-blk.bp-step .bp-bh { height: 30px; cursor: pointer; }
-.bp-blk.bp-step .bp-bname { color: var(--bp-subtle); flex: 0 0 auto; }
+.bp-blk.bp-step .bp-bname { color: var(--bp-subtle); flex: 0 1 auto; min-width: 0; }
 .bp-blk.bp-step .bp-chev svg { transform: rotate(-90deg); }
 .bp-blk.bp-step:not(.bp-open) .bp-band,
 .bp-blk.bp-step:not(.bp-open) .bp-out,
@@ -335,8 +343,9 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
   }
   .blockr-page.bp-toc-open .bp-toc { transform: none; }
   .bp-handle, .bp-save { display: none !important; }
-  .bp-name .bp-nm { max-width: 38vw; }
-  .bp-v-code { display: none !important; }
+  .bp-name .bp-nm { max-width: none; }
+  /* the graph and the source stay off on a phone */
+  .bp-v-code, .bp-v-graph { display: none !important; }
   .bp-ins:not(.bp-ins-last) .bp-insbtn { display: none; }
   .bp-text h1, .bp-title h1 { font-size: 22px; }
   .bp-title-writer input { font-size: 22px; }
