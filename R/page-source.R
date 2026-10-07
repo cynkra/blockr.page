@@ -1,6 +1,6 @@
-# The page as a document: each text item is markdown, each block a chunk. A
-# first text item that is a single `# ` heading becomes the title in the YAML
-# header. The same pieces make the .qmd and the spin .R.
+# The page as a document: each text item is markdown, each section a `##`
+# heading, each block a chunk, and the page's title (the board's name) the
+# title in the YAML header. The same pieces make the .qmd and the spin .R.
 
 # One string of code per block, `id <- expr`, from the block servers'
 # expressions through blockr.core's export_code(). Blocks not built yet are
@@ -73,14 +73,6 @@ chunk_vis_spin <- function(code, output) {
   else ", include=FALSE"
 }
 
-page_title <- function(items) {
-  if (!length(items) || is_block_item(items[[1L]])) {
-    return(NULL)
-  }
-  txt <- items[[1L]]$text
-  if (grepl("^# [^\n]+$", trimws(txt))) sub("^# ", "", trimws(txt)) else NULL
-}
-
 yaml_header <- function(title) {
   c(
     "---",
@@ -96,22 +88,28 @@ yaml_header <- function(title) {
   )
 }
 
-# The source of every item, in item order: a character string per item, the
-# title item carrying the YAML header. `fmt` is "qmd" or "R".
+# The document's head: the YAML header with the page's title, commented out
+# for spin.
+page_head <- function(title, fmt = "qmd") {
+  head <- yaml_header(title)
+  if (identical(fmt, "R")) head <- paste0("#' ", head)
+  paste(head, collapse = "\n")
+}
+
+# The source of every item, in item order: a character string per item.
+# `fmt` is "qmd" or "R".
 page_pieces <- function(items, board, code, fmt = "qmd") {
 
   spin <- identical(fmt, "R")
-  title <- page_title(items)
   blks <- blockr.core::board_blocks(board)
 
   rem <- function(lines) if (spin) paste0("#' ", lines) else lines
 
   lapply(
-    seq_along(items),
-    function(i) {
-      it <- items[[i]]
-      if (i == 1L && !is.null(title)) {
-        return(paste(rem(yaml_header(title)), collapse = "\n"))
+    items,
+    function(it) {
+      if (is_section_item(it)) {
+        return(rem(paste("##", it$section)))
       }
       if (!is_block_item(it)) {
         return(paste(rem(strsplit(it$text, "\n", fixed = TRUE)[[1L]]),
@@ -132,22 +130,12 @@ page_pieces <- function(items, board, code, fmt = "qmd") {
   )
 }
 
-page_document <- function(items, board, code, fmt = "qmd") {
-
+page_document <- function(items, board, code, fmt = "qmd", title = NULL) {
   pieces <- page_pieces(items, board, code, fmt)
-  doc <- paste(unlist(pieces), collapse = "\n\n")
-
-  if (is.null(page_title(items))) {
-    head <- yaml_header(NULL)
-    if (identical(fmt, "R")) head <- paste0("#' ", head)
-    doc <- paste(c(paste(head, collapse = "\n"), doc), collapse = "\n\n")
-  }
-
-  paste0(doc, "\n")
+  paste0(paste(c(page_head(title, fmt), unlist(pieces)), collapse = "\n\n"), "\n")
 }
 
-page_file_stem <- function(items) {
-  title <- page_title(items)
+page_file_stem <- function(title) {
   stem <- if (is.null(title)) "page" else tolower(gsub("[^A-Za-z0-9]+", "-", title))
   stem <- gsub("^-|-$", "", stem)
   if (nzchar(stem)) stem else "page"
@@ -177,10 +165,4 @@ render_page_html <- function(text, file) {
   }
 
   file.copy(html, file, overwrite = TRUE)
-}
-
-# The page's name in the bar: its title, or "Untitled page".
-page_name <- function(items) {
-  title <- page_title(items)
-  if (is.null(title)) "Untitled page" else title
 }

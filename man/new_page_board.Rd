@@ -37,9 +37,10 @@ A board object inheriting from \code{page_board}.
 \description{
 A board shown as one linear document. The board itself is the usual
 blockr board, blocks and links; what the page adds is \code{items}, the reading
-order: an ordered list in which each entry is either a block,
-\code{list(block = "<id>", code = FALSE, output = TRUE)}, or a piece of markdown
-text, \code{list(text = "...")}.
+order: an ordered list in which each entry is a block,
+\code{list(block = "<id>", code = FALSE, output = TRUE)}, a piece of markdown
+text, \code{list(text = "...")}, or the start of a section,
+\code{list(section = "...")}.
 }
 \details{
 A block's two switches are the report's: \code{output} shows its result in the
@@ -48,8 +49,12 @@ it prepares data for the blocks after it and shows as one line that opens
 to its settings. Left out, \code{output} defaults to \code{FALSE} for a transform or
 utility block that feeds another block, \code{TRUE} otherwise; \code{code} defaults to
 \code{FALSE}.
-A text item whose markdown starts with \verb{#} is a heading: it shows in the
-contents panel and starts a section that can be folded.
+A section is the page's one level of headings: it shows in the contents
+panel, can be folded, and is what a view is on a dock board. The page's
+title is the board's name (the \code{board_name} option); a first item that is
+a single \verb{# } heading becomes that name when the board has none. Any other
+text item that is a single heading line becomes a section. Headings inside
+a text are formatting.
 
 Text belongs to the page, not to the board: it never enters the data flow.
 Blocks missing from \code{items} are appended in board order, and items naming a
@@ -58,7 +63,8 @@ block the board does not have are dropped.
 \examples{
 new_page_board(
   blocks = c(a = blockr.core::new_dataset_block("iris")),
-  items = list(list(text = "# Iris"), list(block = "a"))
+  items = list(list(text = "# Iris"), list(section = "Data"),
+               list(block = "a"))
 )
 
 }

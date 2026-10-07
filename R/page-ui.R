@@ -22,7 +22,7 @@ board_ui.page_board <- function(id, x, plugins = blockr.core::board_plugins(x),
         htmltools::span(class = "bp-mark", htmltools::HTML(icon_svg("mark"))),
         htmltools::tags$button(
           class = "bp-q bp-name", type = "button",
-          htmltools::span(class = "bp-nm", page_name(page_items(x))),
+          htmltools::span(class = "bp-nm", board_title(x)),
           htmltools::HTML(icon_svg("chevron"))
         ),
         htmltools::tags$button(

@@ -31,6 +31,7 @@ board <- new_page_board(
   blocks = c(cars = blockr.core::new_dataset_block("mtcars")),
   items = list(
     list(text = "# Fuel economy"),
+    list(section = "The data"),
     list(text = "Motor Trend road tests, 1974."),
     list(block = "cars")
   )
@@ -38,9 +39,11 @@ board <- new_page_board(
 blockr.core::serve(board)
 ```
 
-`items` is the reading order: blocks and markdown text. A block item takes the
-report's two switches, `code` and `output`; a block with `output = FALSE` is a
-step, shown as one line that opens to its settings.
+`items` is the reading order: blocks, markdown text and sections. A section is
+the page's one level of headings, and the title is the board's name; a leading
+`# ` heading sets it. A block item takes the report's two switches, `code` and
+`output`; a block with `output = FALSE` is a step, shown as one line that opens
+to its settings.
 
 `options(blockr.page.mode = "read")` serves the page read-only.
 

@@ -77,14 +77,14 @@ board <- new_page_board(
       "programme work? Data: Ravasi et al. (2021), *Parasites & Vectors* 14, 405."
     )),
     list(block = "ovi"),
-    list(text = "## The data"),
+    list(section = "The data"),
     list(block = "desc"),
     list(block = "season_ct"),
     list(text = paste(
       "Counts climb towards a peak in August. The untreated towns sit higher",
       "all season."
     )),
-    list(text = "## A first model"),
+    list(section = "A first model"),
     list(text = "A Poisson model of egg count on area, built in the model block without code."),
     # a model block is a transform that feeds others, so it would start as a
     # step; this page shows the formula and the fit
@@ -97,7 +97,7 @@ board <- new_page_board(
       "3.67. The interval is too narrow. Each trap is read up to ten times, and",
       "the residual deviance is 180 times its degrees of freedom."
     )),
-    list(text = "## The published model"),
+    list(section = "The published model"),
     list(text = paste(
       "A negative binomial mixed model with a quadratic season, days in the",
       "field as exposure, and random intercepts for trap and town."

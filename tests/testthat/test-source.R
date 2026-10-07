@@ -4,12 +4,12 @@ test_that("format_code keeps a short call on one line", {
 })
 
 test_that("format_code puts the arguments of a long call on their own lines", {
-  e <- quote(desc <- gtsummary::tbl_summary(ovi, by = "AREA", include = No..eggs.AEDES,
+  e <- quote(desc <- stats::aggregate(ovi, by = "AREA", include = No..eggs.AEDES,
                                             type = No..eggs.AEDES ~ "continuous2"))
   expect_identical(
     format_code(e),
     paste(
-      "desc <- gtsummary::tbl_summary(",
+      "desc <- stats::aggregate(",
       "  ovi,",
       "  by = \"AREA\",",
       "  include = No..eggs.AEDES,",
@@ -35,20 +35,22 @@ brd <- new_page_board(
 )
 code <- c(a = "a <- datasets::iris", b = "b <- utils::head(a, 6L)")
 
-test_that("a leading # heading becomes the YAML title", {
+test_that("the board's name is the YAML title, a section a ## heading", {
   pcs <- page_pieces(page_items(brd), brd, code, "qmd")
-  expect_match(pcs[[1L]], "^---\ntitle: \"Iris\"")
-  expect_identical(pcs[[3L]], "## Head")
+  expect_match(page_head(board_title(brd)), "^---\ntitle: \"Iris\"")
+  expect_match(page_document(page_items(brd), brd, code, "qmd", "Iris"),
+               "^---\ntitle: \"Iris\"")
+  expect_identical(pcs[[2L]], "## Head")
   expect_identical(
-    pcs[[2L]],
+    pcs[[1L]],
     paste("```{r}", "#| label: a", "#| echo: false", "a <- datasets::iris", "a", "```", sep = "\n")
   )
 })
 
 test_that("spin pieces comment the text and mark the chunks", {
   pcs <- page_pieces(page_items(brd), brd, code, "R")
-  expect_identical(pcs[[3L]], "#' ## Head")
-  expect_identical(pcs[[4L]], paste("#+ b, echo=FALSE", "b <- utils::head(a, 6L)", "b", sep = "\n"))
+  expect_identical(pcs[[2L]], "#' ## Head")
+  expect_identical(pcs[[3L]], paste("#+ b, echo=FALSE", "b <- utils::head(a, 6L)", "b", sep = "\n"))
 })
 
 test_that("free_input follows the dock: first free named input, none when taken", {

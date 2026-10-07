@@ -26,10 +26,10 @@ board <- new_page_board(
     list(text = "# Fuel economy"),
     list(text = "Motor Trend road tests, 1974. 32 cars, 11 variables."),
     list(block = "cars"),
-    list(text = "## Four cylinders"),
+    list(section = "Four cylinders"),
     list(block = "four"),
     list(block = "top"),
-    list(text = "## Weight and mileage"),
+    list(section = "Weight and mileage"),
     list(block = "plot"),
     list(text = "Heavier cars go fewer miles per gallon.")
   )

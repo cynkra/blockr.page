@@ -34,6 +34,12 @@ page_callback <- function(board, update, session, ...) {
   pending <- new.env(parent = emptyenv())
   fresh <- shiny::reactiveVal(NULL)
 
+  # The page's title is the board's name, a board option.
+  title <- function() {
+    val <- blockr.core::get_board_option_or_null("board_name", session)
+    if (is.null(val) || !nzchar(val)) "Untitled page" else val
+  }
+
   shiny::observeEvent(
     blockr.core::board_block_ids(board$board),
     {
@@ -60,7 +66,7 @@ page_callback <- function(board, update, session, ...) {
       session$sendCustomMessage(
         "blockr-page",
         c(
-          list(target = target, fresh = fresh()),
+          list(target = target, fresh = fresh(), name = title()),
           page_state(items(), board$board)
         )
       )
@@ -146,15 +152,31 @@ page_callback <- function(board, update, session, ...) {
           items(append(cur, list(list(text = act$text)), after = as.integer(act$at)))
         },
 
+        add_section = {
+          items(append(cur, list(list(section = act$text)), after = as.integer(act$at)))
+        },
+
+        # a text that is one heading line becomes a section; an empty text or
+        # section goes
         edit_text = {
           i <- as.integer(act$index) + 1L
           if (i <= n && !is_block_item(cur[[i]])) {
-            if (nzchar(trimws(act$text))) {
-              cur[[i]] <- list(text = act$text)
-            } else {
+            txt <- trimws(act$text)
+            if (!nzchar(txt)) {
               cur <- cur[-i]
+            } else if (is_section_item(cur[[i]])) {
+              cur[[i]] <- list(section = sub("^#+ *", "", txt))
+            } else {
+              cur[[i]] <- as_page_item(list(text = act$text))
             }
             items(cur)
+          }
+        },
+
+        rename = {
+          nm <- trimws(act$name)
+          if (nzchar(nm)) {
+            blockr.core::set_board_option_value("board_name", nm, board$board, session)
           }
         },
 
@@ -225,7 +247,8 @@ page_callback <- function(board, update, session, ...) {
         list(
           target = target,
           fmt = fmt,
-          stem = page_file_stem(items()),
+          stem = page_file_stem(title()),
+          head = page_head(title(), fmt),
           pieces = page_pieces(items(), board$board, code, fmt)
         )
       )
@@ -233,13 +256,15 @@ page_callback <- function(board, update, session, ...) {
   )
 
   source_text <- function(fmt) {
-    shiny::isolate(page_document(items(), board$board, live_block_code(board), fmt))
+    shiny::isolate(
+      page_document(items(), board$board, live_block_code(board), fmt, title())
+    )
   }
 
   session$output$page_dl <- shiny::downloadHandler(
     filename = function() {
       fmt <- if (identical(input$page_source$fmt, "R")) "R" else "qmd"
-      paste0(page_file_stem(shiny::isolate(items())), ".", fmt)
+      paste0(page_file_stem(shiny::isolate(title())), ".", fmt)
     },
     content = function(file) {
       fmt <- if (identical(input$page_source$fmt, "R")) "R" else "qmd"
@@ -248,7 +273,7 @@ page_callback <- function(board, update, session, ...) {
   )
 
   session$output$page_html <- shiny::downloadHandler(
-    filename = function() paste0(page_file_stem(shiny::isolate(items())), ".html"),
+    filename = function() paste0(page_file_stem(shiny::isolate(title())), ".html"),
     content = function(file) {
       tryCatch(
         render_page_html(source_text("qmd"), file),
@@ -295,6 +320,8 @@ page_state <- function(items, board) {
       function(it) {
         if (is_block_item(it)) {
           list(block = it$block, code = isTRUE(it$code), output = isTRUE(it$output))
+        } else if (is_section_item(it)) {
+          list(section = it$section)
         } else {
           list(text = it$text, html = md_html(it$text))
         }

@@ -21,9 +21,7 @@
     plus: '<svg viewBox="0 0 10 10"><path d="M5 1.5v7M1.5 5h7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
     grip: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3" r="1.3"/><circle cx="10.5" cy="3" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="13" r="1.3"/><circle cx="10.5" cy="13" r="1.3"/></svg>',
     chev: '<svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>',
-    plusb: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm6 3.5a.5.5 0 0 0-.5.5v1.5H6a.5.5 0 0 0 0 1h1.5V10a.5.5 0 0 0 1 0V8.5H10a.5.5 0 0 0 0-1H8.5V6a.5.5 0 0 0-.5-.5z"/></svg>',
     branch: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="4" cy="3" r="1.6"/><circle cx="4" cy="13" r="1.6"/><circle cx="12" cy="6" r="1.6"/><path d="M4 4.6v6.8M12 7.6c0 3-4 2.5-7.2 4.4"/></svg>',
-    data: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1c-3.3 0-6 1.1-6 2.5v9C2 13.9 4.7 15 8 15s6-1.1 6-2.5v-9C14 2.1 11.3 1 8 1zm0 1.2c2.8 0 4.8.9 4.8 1.3S10.8 4.8 8 4.8 3.2 3.9 3.2 3.5 5.2 2.2 8 2.2zM3.2 5.3C4.3 5.8 6 6 8 6s3.7-.2 4.8-.7V8c0 .4-2 1.3-4.8 1.3S3.2 8.4 3.2 8V5.3zm0 4.5c1.1.5 2.8.7 4.8.7s3.7-.2 4.8-.7v2.7c0 .4-2 1.3-4.8 1.3s-4.8-.9-4.8-1.3V9.8z"/></svg>',
     text: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg>',
     heading: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5a.5.5 0 0 1 1 0V7h8V2.5a.5.5 0 0 1 1 0v11a.5.5 0 0 1-1 0V8H4v5.5a.5.5 0 0 1-1 0v-11z"/></svg>',
     up: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.3 3.6 7.7a.5.5 0 0 0 .7.7L7.5 5.2V13a.5.5 0 0 0 1 0V5.2l3.2 3.2a.5.5 0 0 0 .7-.7L8 3.3z"/></svg>',
@@ -34,13 +32,6 @@
   const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  function headingLevel(md) {
-    const m = /^\s*(#{1,6})\s/.exec(md || '');
-    return m ? m[1].length : 0;
-  }
-  function headingText(md) {
-    return (md || '').split('\n')[0].replace(/^\s*#{1,6}\s+/, '').trim();
-  }
   // Shiny sends an empty named list as [].
   const asObj = x => (x && !Array.isArray(x)) ? x : {};
 
@@ -110,7 +101,8 @@
       this.source = {
         on: localStorage.getItem('blockr-page-source') === 'on',
         fmt: localStorage.getItem('blockr-page-source-fmt') === 'R' ? 'R' : 'qmd',
-        pieces: null
+        pieces: null,
+        head: null
       };
       this.tocOn = localStorage.getItem('blockr-page-toc') !== 'off';
       this.narrow = this.isNarrow();
@@ -178,11 +170,11 @@
 
     /* ---- state from R ------------------------------------------------------ */
     update(msg) {
-      this.state = { items: msg.items || [], blocks: asObj(msg.blocks), links: msg.links || [] };
+      this.state = { items: msg.items || [], blocks: asObj(msg.blocks), links: msg.links || [], name: msg.name || 'Untitled page' };
       if (msg.fresh && !this.freshDone.has(msg.fresh)) this.pendingFresh = msg.fresh;
       if (this.pendingEdit != null) {
         const it = this.state.items[this.pendingEdit];
-        if (it && it.text != null) this.editing = this.pendingEdit;
+        if (it && (it.text != null || it.section != null)) this.editing = this.pendingEdit;
         this.pendingEdit = null;
       }
       this.render();
@@ -198,12 +190,15 @@
       blockNodes.forEach(n => this.waitFor(n));
       this.doc.querySelectorAll(':scope > .bp-gen').forEach(n => n.remove());
 
-      const seq = [];
-      let foldLevel = 0;
+      // the page's title, the board's name, then the items; a folded
+      // section hides what follows it up to the next section
+      const seq = [this.titleNode()];
+      if (src) seq.push(this.srcNode(-1, 0));
+      let folded = false;
       items.forEach((it, i) => {
-        const lvl = it.text != null ? headingLevel(it.text) : 0;
-        if (lvl && foldLevel && lvl <= foldLevel) foldLevel = 0;
-        const hidden = foldLevel > 0;
+        const sec = it.section != null;
+        if (sec) folded = false;
+        const hidden = folded;
         if (!hidden) seq.push(this.insLine(i, false));
         if (it.block != null) {
           const node = blockNodes.get(it.block);
@@ -219,15 +214,14 @@
             if (src && !hidden) seq.push(this.srcNode(i, 0));
           }
         } else if (!hidden) {
-          seq.push(this.textNode(it, i, lvl));
-          if (src) seq.push(this.srcNode(i, this.editing === i ? 0 : lvl));
+          seq.push(sec ? this.sectionNode(it, i) : this.textNode(it, i));
+          if (src) seq.push(this.srcNode(i, sec && this.editing !== i ? 2 : 0));
         }
-        if (lvl && !foldLevel && this.folded.has(headingText(it.text))) foldLevel = lvl;
+        if (sec && this.folded.has(it.section)) folded = true;
       });
       seq.push(this.insLine(items.length, true));
       if (src) seq.unshift(this.srcHead());
-      const name = items.length && items[0].text != null && headingLevel(items[0].text) === 1 ? headingText(items[0].text) : 'Untitled page';
-      this.el.querySelector('.bp-nm').textContent = name;
+      this.el.querySelector('.bp-nm').textContent = this.state.name;
       // blocks the board has but the reading order does not list yet
       blockNodes.forEach(n => n.classList.add('bp-unplaced'));
 
@@ -237,6 +231,8 @@
         this.doc.insertBefore(node, ref);
       }
 
+      const one = this.doc.querySelector('.bp-writer input');
+      if (one) { one.focus(); one.select(); }
       const ta = this.doc.querySelector('.bp-writer textarea');
       if (ta) {
         const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
@@ -274,29 +270,50 @@
       return d;
     }
 
-    textNode(it, i, lvl) {
+    // The page's title: the board's name. A click renames it.
+    titleNode() {
+      const d = document.createElement('div');
+      d.className = 'bp-title bp-gen';
+      if (this.editing === 'title') {
+        d.classList.add('bp-writer', 'bp-title-writer');
+        d.innerHTML = `<input type="text" spellcheck="true" value="${esc(this.state.name)}" aria-label="Page title">`;
+      } else {
+        d.innerHTML = `<h1>${esc(this.state.name)}</h1>`;
+      }
+      return d;
+    }
+
+    textNode(it, i) {
       const d = document.createElement('div');
       d.dataset.index = i;
       if (this.editing === i) {
         d.className = 'bp-writer bp-gen';
         d.innerHTML = `<textarea spellcheck="true">${esc(it.text)}</textarea>
-          <div class="bp-wf"><span>**bold** · *italic* · # heading · Ctrl+Enter</span><span class="bp-bsp"></span>
+          <div class="bp-wf"><span>**bold** · *italic* · Ctrl+Enter</span><span class="bp-bsp"></span>
           <button type="button" class="bp-wdiscard">Discard</button><button type="button" class="bp-wdone">Done</button></div>`;
         return d;
       }
-      d.className = 'bp-text bp-gen' + (lvl ? ' bp-heading' : '') + (it.text.trim() ? '' : ' bp-text-empty');
+      d.className = 'bp-text bp-gen' + (it.text.trim() ? '' : ' bp-text-empty');
       d.innerHTML = `<button type="button" class="bp-handle bp-hb bp-hb-s" aria-label="Move or remove">${ICON.grip}</button>` +
         (it.html || '<p class="bp-placeholder">Empty text</p>');
-      if (lvl) {
-        const h = d.querySelector('h1,h2,h3,h4,h5,h6');
-        if (h) {
-          const folded = this.folded.has(headingText(it.text));
-          d.classList.toggle('bp-folded', folded);
-          h.insertAdjacentHTML('beforeend',
-            `<button type="button" class="bp-fold bp-hb bp-hb-s" aria-label="Fold section">${ICON.chev}</button>` +
-            (folded ? '<span class="bp-foldn">folded</span>' : ''));
-        }
+      return d;
+    }
+
+    // A section: the page's one level of headings, a view on a dock board.
+    sectionNode(it, i) {
+      const d = document.createElement('div');
+      d.dataset.index = i;
+      if (this.editing === i) {
+        d.className = 'bp-writer bp-sec-writer bp-gen';
+        d.innerHTML = `<input type="text" spellcheck="true" value="${esc(it.section)}" placeholder="Section title" aria-label="Section title">`;
+        return d;
       }
+      const folded = this.folded.has(it.section);
+      d.className = 'bp-text bp-heading bp-section bp-gen' + (folded ? ' bp-folded' : '');
+      d.innerHTML = `<button type="button" class="bp-handle bp-hb bp-hb-s" aria-label="Move or remove">${ICON.grip}</button>` +
+        `<h2>${esc(it.section) || '<span class="bp-placeholder">Untitled section</span>'}` +
+        `<button type="button" class="bp-fold bp-hb bp-hb-s" aria-label="Fold section">${ICON.chev}</button>` +
+        (folded ? '<span class="bp-foldn">folded</span>' : '') + '</h2>';
       return d;
     }
 
@@ -304,10 +321,10 @@
     // own top margin, which the source line matches.
     srcNode(i, lvl) {
       const d = document.createElement('div');
-      const it = this.state.items[i];
-      d.className = 'bp-src bp-gen' + (it.block != null ? ' bp-src-chunk' : '') + (lvl ? ' bp-src-h' + Math.min(lvl, 3) : '');
+      const it = i < 0 ? {} : this.state.items[i];
+      d.className = 'bp-src bp-gen' + (it.block != null ? ' bp-src-chunk' : '') + (lvl ? ' bp-src-h' + Math.min(lvl, 3) : '') + (i < 0 ? ' bp-src-head' : '');
       d.dataset.src = i;
-      const txt = this.source.pieces && this.source.pieces[i];
+      const txt = i < 0 ? this.source.head : this.source.pieces && this.source.pieces[i];
       d.innerHTML = txt == null ? '' : txt.split('\n').map(l => `<div class="bp-ln${lineClass(l)}">${tint(l) || '&nbsp;'}</div>`).join('');
       return d;
     }
@@ -333,8 +350,13 @@
       this.doc.addEventListener('click', e => this.onClick(e));
       this.doc.addEventListener('keydown', e => {
         if (!e.target.closest('.bp-writer')) return;
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.finishEdit(true); }
+        const one = e.target.tagName === 'INPUT';
+        if (e.key === 'Enter' && (one || e.ctrlKey || e.metaKey)) { e.preventDefault(); this.finishEdit(true); }
         if (e.key === 'Escape') { e.preventDefault(); this.finishEdit(false); }
+      });
+      // A title or a section commits when it loses the focus.
+      this.doc.addEventListener('focusout', e => {
+        if (e.target.tagName === 'INPUT' && e.target.closest('.bp-writer')) setTimeout(() => this.finishEdit(true), 0);
       });
       // The graph stays still while you read; pointing at a dot lights its
       // path and names the block.
@@ -476,7 +498,7 @@
         return this.itemMenu(this.itemIndexOf(t), t.closest('.bp-handle'));
       }
       if (t.closest('.bp-fold')) {
-        const key = headingText(this.state.items[this.itemIndexOf(t)].text);
+        const key = this.state.items[this.itemIndexOf(t)].section;
         this.folded.has(key) ? this.folded.delete(key) : this.folded.add(key);
         return this.render();
       }
@@ -505,6 +527,10 @@
         }
         return;
       }
+      if (t.closest('.bp-title h1')) {
+        this.editing = 'title';
+        return this.render();
+      }
       const txt = t.closest('.bp-text');
       if (txt && !t.closest('a')) {
         this.editing = +txt.dataset.index;
@@ -515,12 +541,21 @@
     finishEdit(save) {
       const w = this.doc.querySelector('.bp-writer');
       if (!w) return;
+      const val = w.querySelector('textarea, input').value;
+      if (this.editing === 'title') {
+        this.editing = null;
+        if (save && val.trim() && val.trim() !== this.state.name) {
+          this.state.name = val.trim();
+          this.send({ type: 'rename', name: val.trim() });
+        }
+        return this.render();
+      }
       const i = +w.dataset.index;
       const it = this.state.items[i];
-      const val = w.querySelector('textarea').value;
+      const cur = it ? (it.section != null ? it.section : it.text) : null;
       this.editing = null;
-      if (save && it && val !== it.text) this.send({ type: 'edit_text', index: i, text: val });
-      else if (!save && it && !it.text.trim()) this.send({ type: 'edit_text', index: i, text: '' });
+      if (save && it && val !== cur) this.send({ type: 'edit_text', index: i, text: val });
+      else if (it && !String(cur).trim() && (!save || !val.trim())) this.send({ type: 'edit_text', index: i, text: '' });
       this.render();
     }
 
@@ -546,6 +581,10 @@
     // A pick closes the menu; the next one opens after that has settled.
     then(fn) { return () => setTimeout(fn, 0); }
 
+    // The + of a gap: one list. Text and Section on top, then the blocks that
+    // read from the block above, first of them ready for Enter, then the
+    // blocks without an input; typing searches all of them. A block from
+    // another input is the last row.
     insertMenu(at, anchor) {
       const items = this.state.items;
       const above = items.slice(0, at).filter(it => it.block != null).map(it => it.block);
@@ -553,22 +592,46 @@
       const ins = anchor.closest('.bp-ins');
       const mark = () => ins && ins.classList.add('bp-open');
       const unmark = () => ins && ins.classList.remove('bp-open');
-      const rows = [];
-      if (last) {
-        rows.push({ label: 'Block', meta: 'after ' + this.blockName(last), icon: ICON.plusb,
-          onSelect: this.then(() => { mark(); this.blockMenu(anchor, at, last, unmark); }) });
+      const add = (r, from) => () => this.send({ type: 'add_block', at: at, registry: r.id, from: from || '' });
+      const blockRows = (list, from) => {
+        const out = [];
+        let cat = null;
+        list.forEach(r => {
+          if (r.category !== cat) { cat = r.category; out.push({ title: cat }); }
+          out.push({ label: r.name, badge: r.package, keywords: r.id + ' ' + r.category,
+            mark: { icon: r.icon, category: r.category }, onSelect: add(r, from) });
+        });
+        return out;
+      };
+      const rows = [
+        { label: 'Text', meta: 'a paragraph', icon: ICON.text,
+          onSelect: () => { this.pendingEdit = at; this.send({ type: 'add_text', at: at, text: '' }); } },
+        { label: 'Section', meta: 'a heading', icon: ICON.heading,
+          onSelect: () => { this.pendingEdit = at; this.send({ type: 'add_section', at: at, text: '' }); } }
+      ];
+      if (last) rows.push({ divider: true }, ...blockRows(this.registry.filter(r => r.append), last));
+      const free = this.registry.filter(r => !r.append);
+      if (free.length) {
+        rows.push({ divider: true }, { title: 'Without input' });
+        free.forEach(r => rows.push({ label: r.name, badge: r.package, keywords: r.id + ' ' + r.category,
+          mark: { icon: r.icon, category: r.category }, onSelect: add(r, '') }));
       }
       if (above.length > 1) {
-        rows.push({ label: 'Block from another input', icon: ICON.branch,
+        rows.push({ divider: true }, { label: 'From another block…', icon: ICON.branch,
           onSelect: this.then(() => { mark(); this.fromMenu(anchor, at, above, unmark); }) });
       }
-      rows.push({ label: 'Block without input', icon: ICON.data,
-        onSelect: this.then(() => { mark(); this.blockMenu(anchor, at, null, unmark); }) });
-      rows.push({ divider: true });
-      rows.push({ label: 'Text', onSelect: () => { this.pendingEdit = at; this.send({ type: 'add_text', at: at, text: '' }); } });
-      rows.push({ label: 'Heading', onSelect: () => { this.pendingEdit = at; this.send({ type: 'add_text', at: at, text: '## ' }); } });
       mark();
-      this.menu(anchor, { items: rows, onClose: () => setTimeout(() => { if (!this.openMenu) unmark(); }, 0) });
+      this.menu(anchor, {
+        caption: last ? 'Add after ' + this.blockName(last) : 'Add',
+        filter: 'Search blocks', minWidth: 320, items: rows,
+        onClose: () => setTimeout(() => { if (!this.openMenu) unmark(); }, 0)
+      });
+      // the first block that reads from the one above is the row Enter takes
+      const h = this.openMenu;
+      if (last && h && h.el) {
+        const first = h.el.querySelectorAll('.blockr-menu__item')[2];
+        if (first) first.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+      }
     }
 
     fromMenu(anchor, at, above, onClose) {
@@ -941,12 +1004,12 @@
 
     /* ---- contents ----------------------------------------------------------------------- */
     buildToc() {
-      let h = '<div class="bp-th">Contents</div>';
+      let h = '<div class="bp-th">Contents</div>' +
+        `<a class="bp-t-h bp-t-h1" data-index="-1">${esc(this.state.name)}</a>`;
       this.state.items.forEach((it, i) => {
-        if (it.text != null) {
-          const lvl = headingLevel(it.text);
-          if (lvl) h += `<a class="bp-t-h bp-t-h${Math.min(lvl, 3)}" data-index="${i}">${esc(headingText(it.text))}</a>`;
-        } else {
+        if (it.section != null) {
+          h += `<a class="bp-t-h bp-t-h2" data-index="${i}">${esc(it.section)}</a>`;
+        } else if (it.block != null) {
           h += `<a class="bp-t-b" data-block="${esc(it.block)}" data-index="${i}"><i></i>${esc(this.blockName(it.block))}</a>`;
         }
       });
@@ -974,6 +1037,7 @@
       setTimeout(() => el.classList.remove('bp-flash'), 900);
     }
     jumpIndex(i) {
+      if (i < 0) { this.scrollEl.scrollTop = 0; return; }
       const it = this.state.items[i];
       if (!it) return;
       if (it.block != null) return this.jumpBlock(it.block);
@@ -986,7 +1050,7 @@
         const idx = this.state.items.findIndex(it => it.block === id);
         for (let i = idx; i >= 0; i--) {
           const it = this.state.items[i];
-          if (it.text != null && this.folded.has(headingText(it.text))) { this.folded.delete(headingText(it.text)); break; }
+          if (it.section != null && this.folded.has(it.section)) { this.folded.delete(it.section); break; }
         }
         this.render();
         node = this.doc.querySelector(`:scope > .bp-blk[data-block-id="${id}"]`);
@@ -1023,6 +1087,7 @@
       const p = pageFor(msg.target);
       if (!p || msg.fmt !== p.source.fmt) return;
       p.source.pieces = msg.pieces || [];
+      p.source.head = msg.head || null;
       p.render();
     });
     return true;

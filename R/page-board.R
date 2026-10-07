@@ -2,9 +2,10 @@
 #'
 #' A board shown as one linear document. The board itself is the usual
 #' blockr board, blocks and links; what the page adds is `items`, the reading
-#' order: an ordered list in which each entry is either a block,
-#' `list(block = "<id>", code = FALSE, output = TRUE)`, or a piece of markdown
-#' text, `list(text = "...")`.
+#' order: an ordered list in which each entry is a block,
+#' `list(block = "<id>", code = FALSE, output = TRUE)`, a piece of markdown
+#' text, `list(text = "...")`, or the start of a section,
+#' `list(section = "...")`.
 #'
 #' A block's two switches are the report's: `output` shows its result in the
 #' document, `code` shows its code. A block with `output = FALSE` is a step:
@@ -12,8 +13,12 @@
 #' to its settings. Left out, `output` defaults to `FALSE` for a transform or
 #' utility block that feeds another block, `TRUE` otherwise; `code` defaults to
 #' `FALSE`.
-#' A text item whose markdown starts with `#` is a heading: it shows in the
-#' contents panel and starts a section that can be folded.
+#' A section is the page's one level of headings: it shows in the contents
+#' panel, can be folded, and is what a view is on a dock board. The page's
+#' title is the board's name (the `board_name` option); a first item that is
+#' a single `# ` heading becomes that name when the board has none. Any other
+#' text item that is a single heading line becomes a section. Headings inside
+#' a text are formatting.
 #'
 #' Text belongs to the page, not to the board: it never enters the data flow.
 #' Blocks missing from `items` are appended in board order, and items naming a
@@ -29,7 +34,8 @@
 #' @examples
 #' new_page_board(
 #'   blocks = c(a = blockr.core::new_dataset_block("iris")),
-#'   items = list(list(text = "# Iris"), list(block = "a"))
+#'   items = list(list(text = "# Iris"), list(section = "Data"),
+#'                list(block = "a"))
 #' )
 #'
 #' @export
@@ -40,6 +46,13 @@ new_page_board <- function(blocks = list(), links = list(), stacks = list(),
 
   blocks <- blockr.core::as_blocks(blocks)
   links <- blockr.core::as_links(links)
+
+  # a leading `# Title` names the page, which is the board's name
+  title <- leading_title(items)
+  if (!is.null(title)) {
+    items <- unclass(items)[-1L]
+    options <- with_board_name(options, title)
+  }
 
   blockr.core::new_board(
     blocks = blocks,
@@ -66,6 +79,42 @@ is_page_board <- function(x) {
 page_items <- function(x) {
   stopifnot(is_page_board(x))
   x[["items"]]
+}
+
+leading_title <- function(items) {
+  if (!length(items)) {
+    return(NULL)
+  }
+  first <- unclass(items)[[1L]]
+  txt <- if (is.character(first)) first else first[["text"]]
+  if (is.character(txt) && length(txt) == 1L && grepl("^# [^\n]+$", trimws(txt))) {
+    sub("^# ", "", trimws(txt))
+  } else {
+    NULL
+  }
+}
+
+# Sets the board's name, unless the options already carry one.
+with_board_name <- function(options, name) {
+  ids <- names(options)
+  opts <- stats::setNames(unclass(options), ids)
+  cur <- opts[["board_name"]]
+  if (!is.null(cur) && !is.null(blockr.core::board_option_value(cur))) {
+    return(options)
+  }
+  do.call(
+    blockr.core::new_board_options,
+    unname(c(list(blockr.core::new_board_name_option(value = name)),
+             opts[ids != "board_name"]))
+  )
+}
+
+# The page's title: the board's name, from the options of a board or, in a
+# session, its live value.
+board_title <- function(board) {
+  opt <- blockr.core::board_options(board)[["board_name"]]
+  val <- if (is.null(opt)) NULL else blockr.core::board_option_value(opt)
+  if (is.null(val) || !nzchar(val)) "Untitled page" else val
 }
 
 # A transform or utility block that feeds another block starts as a step.
@@ -115,7 +164,7 @@ block_item_flags <- function(it, defaults = NULL) {
 as_page_item <- function(x) {
 
   if (is.character(x) && length(x) == 1L) {
-    return(list(text = x))
+    x <- list(text = x)
   }
 
   x <- as.list(x)
@@ -124,14 +173,30 @@ as_page_item <- function(x) {
     return(x[intersect(c("block", "code", "output"), names(x))])
   }
 
+  if (is.character(x[["section"]]) && length(x[["section"]]) == 1L) {
+    return(list(section = x[["section"]]))
+  }
+
   if (is.character(x[["text"]]) && length(x[["text"]]) == 1L) {
-    return(list(text = x[["text"]]))
+    sec <- heading_line(x[["text"]])
+    return(if (is.null(sec)) list(text = x[["text"]]) else list(section = sec))
   }
 
   stop(
-    "A page item is `list(block = <id>)` or `list(text = <markdown>)`.",
+    "A page item is `list(block = <id>)`, `list(text = <markdown>)` or ",
+    "`list(section = <title>)`.",
     call. = FALSE
   )
+}
+
+# A text that is one heading line, `## Data`, is a section: its title, or NULL.
+heading_line <- function(x) {
+  x <- trimws(x)
+  if (grepl("^#{1,6} [^\n]+$", x)) sub("^#{1,6} +", "", x) else NULL
+}
+
+is_section_item <- function(x) {
+  !is.null(x[["section"]])
 }
 
 is_block_item <- function(x) {
@@ -164,6 +229,8 @@ print.page_items <- function(x, ...) {
   for (it in x) {
     if (is_block_item(it)) {
       cat("  [block]", it$block, "\n")
+    } else if (is_section_item(it)) {
+      cat("  [section]", it$section, "\n")
     } else {
       cat("  [text] ", substr(gsub("\n", " ", it$text), 1L, 60L), "\n")
     }
