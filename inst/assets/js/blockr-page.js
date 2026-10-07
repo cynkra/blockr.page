@@ -313,12 +313,7 @@
             };
             focus();
           } else {
-            if (node.classList.contains('bp-out-hidden')) {
-              node.classList.add('bp-band-open');
-              this.shown(node);
-            } else {
-              this.openPanel(node.dataset.blockId);
-            }
+            this.openSettings(node);
             setTimeout(() => this.jumpTo(node), 50);
           }
         }
@@ -327,7 +322,7 @@
       this.foldSteps();
       this.paintCaptions();
       this.buildToc();
-      this.refreshPanel();
+      if (this.selected && !this.blockNode(this.selected)) this.selected = null;
       // the cards are on the page before the first order arrives; show it once laid out
       this.el.classList.add('bp-laid-out');
       this.scheduleRail();
@@ -476,12 +471,13 @@
       // a block marked for removal: any key but Backspace, or a click, lets it be
       document.addEventListener('keydown', e => { if (this.armed && e.key !== 'Backspace') this.disarm(); }, true);
       document.addEventListener('mousedown', () => this.disarm(), true);
-      // Escape closes the panel, unless a menu or a field has it.
+      // Escape, or a click outside any block, lets the outlined block go.
       document.addEventListener('keydown', e => {
-        if (e.key !== 'Escape' || !this.panelFor || this.openMenu || e.defaultPrevented) return;
+        if (e.key !== 'Escape' || !this.selected || this.openMenu || e.defaultPrevented) return;
         if (e.target.closest && e.target.closest('.ProseMirror, input, textarea, select, .blockr-menu')) return;
-        this.closePanel();
+        this.select(null);
       });
+      this.doc.addEventListener('mousedown', e => { if (!e.target.closest('.bp-blk')) this.select(null); });
       // Pasted text comes in plain.
       this.doc.addEventListener('paste', e => {
         if (!e.target.closest('.bp-ed')) return;
@@ -651,13 +647,12 @@
         this.openRuns.has(k) ? this.openRuns.delete(k) : this.openRuns.add(k);
         return this.render();
       }
-      // A click on a block's output selects it, its settings beside the text,
-      // unless it is on something the output does itself (a link, a button,
-      // a sortable header, a chart) or selects text.
+      // A click on a block's output outlines it, unless it is on something the
+      // output does itself (a link, a button, a sortable header, a chart) or
+      // selects text. Its settings open from its header.
       if (blk && !blk.classList.contains('bp-prose') && !blk.classList.contains('bp-out-hidden') &&
           t.closest('.bp-out, .bp-codeview') && !t.closest(OWN_CLICKS) && document.getSelection().isCollapsed) {
-        if (this.panelFor !== blk.dataset.blockId) this.openPanel(blk.dataset.blockId);
-        return;
+        return this.select(blk.dataset.blockId);
       }
       // A chart keeps its settings under its own gear: a click on its frame
       // (title, the space around it) opens them there. The plot's clicks are
@@ -674,15 +669,10 @@
         if (t.closest('.bp-code-t')) return this.send({ type: 'toggle', index: idx, field: 'code' });
         if (t.closest('.bp-eye-t')) return this.send({ type: 'toggle', index: idx, field: 'output' });
         if (t.closest('.bp-more')) return this.blockMoreMenu(idx, blk.dataset.blockId, t.closest('.bp-more'));
-        // a chart's settings are part of its chart: they open where it is
-        if (t.closest('.bp-ctl-t') && blk.classList.contains('bp-out-hidden')) {
-          blk.classList.toggle('bp-band-open');
-          this.shown(blk);
-          return this.scheduleRail();
-        }
-        // Controls, the block's name, a step's line: its settings, beside the text
+        // Controls, the block's name, a step's line: its settings, in place
         if (t.closest('.bp-ctl-t') || !t.closest('.bp-gh, .bp-handle')) {
-          return this.togglePanel(blk.dataset.blockId);
+          this.select(blk.dataset.blockId);
+          return this.toggleSettings(blk);
         }
         return;
       }
@@ -1147,80 +1137,36 @@
       cb(msg.values || []);
     }
 
-    /* ---- a block's settings, beside the text ------------------------------------- */
-    // The panel takes the place of the contents. The block's settings (its
-    // band, live Shiny inputs) move into it and back; the page keeps its
-    // shape while you change them, and the output changes in place.
-    panel() {
-      if (this._panel) return this._panel;
-      const p = document.createElement('aside');
-      p.className = 'bp-panel';
-      p.addEventListener('click', e => {
-        if (e.target.closest('.bp-ip-x')) return this.closePanel();
-        const from = e.target.closest('[data-from]');
-        if (from) this.jumpBlock(from.dataset.from);
-      });
-      this.el.querySelector('.bp-body').appendChild(p);
-      this._panel = p;
-      return p;
-    }
-    togglePanel(id) { this.panelFor === id ? this.closePanel() : this.openPanel(id); }
-    openPanel(id) {
-      if (this.read) return;
-      this.closePanel();
-      const node = this.blockNode(id);
-      if (!node) return;
-      const p = this.panel();
-      const mark = node.querySelector('.bp-bh > :first-child');
-      p.innerHTML = '<div class="bp-ip-head">' + (mark ? mark.outerHTML : '') +
-        `<span class="bp-ip-name">${esc(this.blockName(id))}</span>` +
-        `<button type="button" class="bp-ip-x bp-hb" aria-label="Close">${ICON.close}</button></div>` +
-        '<div class="bp-ip-body"></div><div class="bp-ip-doc"></div>';
-      const band = node.querySelector(':scope > .bp-band');
-      if (band && !node.classList.contains('bp-out-hidden')) {
-        p.querySelector('.bp-ip-body').appendChild(band);
-        this._band = { node: node, band: band };
-        this.shown(band);
+    /* ---- a block's settings, in place --------------------------------------------- */
+    // Every block's settings open where the block is, in a band above its
+    // output. A chart keeps them under its own gear, so its gear opens; a step
+    // opens to its settings and its result.
+    toggleSettings(node) {
+      const id = node.dataset.blockId;
+      const gear = node.classList.contains('bp-out-hidden') && node.querySelector('.bp-band .blockr-gear-btn');
+      if (gear) { gear.click(); return; }
+      if (node.classList.contains('bp-step')) {
+        this.openSteps.has(id) ? this.openSteps.delete(id) : this.openSteps.add(id);
+        node.classList.toggle('bp-open', this.openSteps.has(id));
+      } else {
+        node.classList.toggle('bp-band-open');
       }
-      this.panelFor = id;
-      node.classList.add('bp-selected');
-      this.el.classList.add('bp-panel-open');
-      this.refreshPanel();
+      this.shown(node);
       this.scheduleRail();
     }
-    closePanel() {
-      if (!this.panelFor) return;
-      const b = this._band;
-      if (b && b.node.isConnected) {
-        b.node.insertBefore(b.band, b.node.querySelector(':scope > .bp-codeview'));
-        this.shown(b.node);
-      }
-      this._band = null;
-      const node = this.blockNode(this.panelFor);
-      if (node) node.classList.remove('bp-selected');
-      this.panelFor = null;
-      this.el.classList.remove('bp-panel-open');
-      this.scheduleRail();
+    openSettings(node) {
+      const open = node.classList.contains('bp-step') ? node.classList.contains('bp-open')
+        : node.classList.contains('bp-out-hidden') || node.classList.contains('bp-band-open');
+      if (!open) this.toggleSettings(node);
     }
-    // what the block reads from, as the state has it; Code and Output stay
-    // with the block's own buttons in the text
-    refreshPanel() {
-      if (!this.panelFor) return;
-      const id = this.panelFor;
-      const it = this.state.items.find(x => x.block === id);
-      if (!it || !this.blockNode(id)) {
-        // the block went, its settings with it
-        if (this._band) this._band.band.remove();
-        this._band = null;
-        this.panelFor = null;
-        this.el.classList.remove('bp-panel-open');
-        return;
-      }
-      const from = this.parents(id);
-      this._panel.querySelector('.bp-ip-doc').innerHTML =
-        (from.length ? '<div class="bp-ip-lab">Reads from</div>' +
-          from.map(f => `<button type="button" class="bp-ip-from" data-from="${esc(f)}">${esc(this.blockName(f))}</button>`).join('') : '');
-      this._panel.querySelector('.bp-ip-name').textContent = this.blockName(id);
+    // The block a click outlined.
+    select(id) {
+      if (this.selected === id) return;
+      const old = this.selected && this.blockNode(this.selected);
+      if (old) old.classList.remove('bp-selected');
+      this.selected = id;
+      const node = id && this.blockNode(id);
+      if (node) node.classList.add('bp-selected');
     }
 
     /* ---- find and replace in the texts ------------------------------------------- */
