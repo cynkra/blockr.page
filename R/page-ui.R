@@ -121,6 +121,13 @@ page_block_card <- function(blk, blk_id, ns) {
     ),
     id = ns(paste0("bp-block-", blk_id)),
     `data-block-id` = blk_id,
+    # what the page waits for before it shows the block: its output, or a
+    # chart the browser draws. Until then a skeleton holds the place.
+    `data-bp-wait` = if (browser_drawn(blk)) {
+      "draw"
+    } else if ("outputs" %in% visible) {
+      "output"
+    },
     # The header: the block's mark and name as a caption, then the page's
     # switches, shown on hover: Controls (dock's name and icon for the inputs
     # section), Code and Output (the report's two switches), then "..." for

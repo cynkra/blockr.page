@@ -392,3 +392,25 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-bh { gap: 6px; }
 .bp-bh .bp-bname { margin-right: 4px; }
 .bp-bh .blockr-block-mark { margin-right: 2px; }
+
+/* ---- loading: a skeleton holds a block's place until its first result ------------ */
+/* before the first reading order arrives, the cards sit unordered without text */
+.blockr-page:not(.bp-laid-out) .bp-doc, .blockr-page:not(.bp-laid-out) svg.bp-rail { visibility: hidden; }
+.bp-skel { display: none; }
+.bp-blk.bp-loading .bp-out, .bp-blk.bp-loading .bp-band { position: relative; }
+.bp-blk.bp-loading .bp-out { min-height: 150px; }
+.bp-blk.bp-loading[data-bp-wait="draw"] .bp-band { min-height: 320px; }
+.bp-blk.bp-loading .bp-skel, .bp-skel.bp-gone {
+  display: block; position: absolute; inset: 0; z-index: 3; background: var(--bp-bg); pointer-events: none;
+  transition: opacity .35s;
+}
+.bp-skel.bp-gone { opacity: 0; }
+.bp-sk-r, .bp-sk-box {
+  display: block; border-radius: 4px; background: linear-gradient(90deg, #f1f2f4 0, #f7f8f9 40%, #f1f2f4 80%);
+  background-size: 600px 100%; animation: bp-shimmer 1.4s linear infinite;
+}
+.bp-sk-r { height: 12px; margin: 13px 0; }
+.bp-sk-r.bp-sk-h { height: 14px; margin-top: 4px; background-color: #eceef1; }
+.bp-sk-box { height: calc(100% - 8px); border-radius: 8px; }
+@keyframes bp-shimmer { from { background-position: -300px 0; } to { background-position: 300px 0; } }
+@media (prefers-reduced-motion: reduce) { .bp-sk-r, .bp-sk-box { animation: none; } }

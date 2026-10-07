@@ -195,6 +195,7 @@
       const items = this.state.items;
       const blockNodes = new Map();
       this.doc.querySelectorAll(':scope > .bp-blk').forEach(n => blockNodes.set(n.dataset.blockId, n));
+      blockNodes.forEach(n => this.waitFor(n));
       this.doc.querySelectorAll(':scope > .bp-gen').forEach(n => n.remove());
 
       const seq = [];
@@ -257,6 +258,8 @@
       }
 
       this.buildToc();
+      // the cards are on the page before the first order arrives; show it once laid out
+      this.el.classList.add('bp-laid-out');
       this.scheduleRail();
       if (this.mo) this.mo.takeRecords();
     }
@@ -431,6 +434,23 @@
       this.scrollEl.addEventListener('scroll', () => this.spy(), { passive: true });
       // Outputs settle after first paint (plots, tables): redraw the gutter then.
       if (window.ResizeObserver) new ResizeObserver(() => this.scheduleRail()).observe(this.doc);
+      // A block's first result ends its skeleton. An output block waits for
+      // all its outputs; once Shiny has been idle for a while without a new
+      // value, whatever still waits is shown as it is.
+      if (window.jQuery) {
+        window.jQuery(this.doc).on('shiny:value shiny:error', e => {
+          if (this._quiet) { clearTimeout(this._quiet); this._quiet = setTimeout(() => this.releaseAll(), 1500); }
+          const blk = e.target.closest && e.target.closest('.bp-blk.bp-loading[data-bp-wait="output"]');
+          if (!blk || !e.target.closest('.bp-out')) return;
+          e.target.dataset.bpGot = '1';
+          const outs = [...blk.querySelectorAll('.bp-out .shiny-bound-output')];
+          if (outs.every(o => o === e.target || o.dataset.bpGot)) requestAnimationFrame(() => this.ready(blk));
+        });
+        window.jQuery(document).on('shiny:idle', () => {
+          clearTimeout(this._quiet);
+          this._quiet = setTimeout(() => this.releaseAll(), 1500);
+        });
+      }
       // A block card inserted by R before its item arrives, or after it.
       // render() moves cards itself and drops those records (takeRecords).
       this.mo = new MutationObserver(muts => {
@@ -804,6 +824,44 @@
       e.preventDefault();
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
+    }
+
+    // A skeleton in the block's place until its first result: grey rows for
+    // an output, a grey area for a chart. Steps show no result, so no wait.
+    waitFor(node) {
+      if (node.dataset.bpInit) return;
+      node.dataset.bpInit = '1';
+      const w = node.dataset.bpWait;
+      if (!w) return;
+      const it = this.state.items.find(x => x.block === node.dataset.blockId);
+      if (it && it.output === false) return;
+      const host = node.querySelector(w === 'draw' ? '.bp-band' : '.bp-out');
+      if (!host) return;
+      const sk = document.createElement('div');
+      sk.className = 'bp-skel';
+      sk.innerHTML = w === 'draw' ? '<i class="bp-sk-box"></i>'
+        : '<i class="bp-sk-r bp-sk-h"></i><i class="bp-sk-r" style="width:92%"></i><i class="bp-sk-r" style="width:78%"></i><i class="bp-sk-r" style="width:86%"></i>';
+      host.prepend(sk);
+      node.classList.add('bp-loading');
+      if (w === 'draw') {
+        // a chart is done when its canvas or svg is there
+        const drawn = () => [...host.querySelectorAll('canvas, svg')].some(c => c.getBoundingClientRect().width > 150);
+        const mo = new MutationObserver(() => { if (drawn()) { mo.disconnect(); this.ready(node); } });
+        mo.observe(host, { childList: true, subtree: true });
+        node._bpMo = mo;
+      }
+    }
+    ready(node) {
+      if (!node.classList.contains('bp-loading')) return;
+      if (node._bpMo) { node._bpMo.disconnect(); node._bpMo = null; }
+      const sk = node.querySelector('.bp-skel');
+      node.classList.remove('bp-loading');
+      if (sk) { sk.classList.add('bp-gone'); setTimeout(() => sk.remove(), 400); }
+      this.scheduleRail();
+    }
+    releaseAll() {
+      this._quiet = null;
+      this.doc.querySelectorAll('.bp-blk.bp-loading').forEach(n => this.ready(n));
     }
 
     toast(msg) {
