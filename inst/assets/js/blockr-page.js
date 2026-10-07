@@ -112,11 +112,13 @@
         fmt: localStorage.getItem('blockr-page-source-fmt') === 'R' ? 'R' : 'qmd',
         pieces: null
       };
+      this.tocOn = localStorage.getItem('blockr-page-toc') !== 'off';
       this.narrow = this.isNarrow();
       this.readOnly = el.classList.contains('bp-readonly');
       // a page served for readers (options(blockr.page.mode = "read"))
       this.read = this.readOnly;
       this.applyGutter();
+      this.applyToc();
       this.bind();
       this.sendSource();
     }
@@ -129,7 +131,13 @@
       const v = localStorage.getItem(this.gutterKey());
       this.gutterOff = v ? v === 'off' : this.narrow;
       this.el.classList.toggle('bp-no-gutter', this.gutterOff);
-      this.el.querySelector('.bp-gutlabel').setAttribute('aria-label', this.gutterOff ? 'Show graph' : 'Hide graph');
+      this.el.querySelector('.bp-v-graph').classList.toggle('bp-on', !this.gutterOff);
+    }
+    // Contents: a column on wide views, a sheet over the page on narrow ones.
+    applyToc() {
+      this.el.classList.toggle('bp-no-toc', !this.tocOn);
+      const on = this.narrow ? this.el.classList.contains('bp-toc-open') : this.tocOn;
+      this.el.querySelector('.bp-v-toc').classList.toggle('bp-on', on);
     }
 
     // Source beside the page: wide views only, two columns do not fit a phone.
@@ -137,6 +145,7 @@
     sendSource() {
       const on = this.sourceOn();
       this.el.classList.toggle('bp-source', on);
+      this.el.querySelector('.bp-v-code').classList.toggle('bp-on', on);
       if (window.Shiny && Shiny.setInputValue) {
         Shiny.setInputValue(this.ns + 'page_source', { on: on, fmt: this.source.fmt });
       }
@@ -303,7 +312,11 @@
     srcHead() {
       const d = document.createElement('div');
       d.className = 'bp-srchead bp-gen';
-      d.innerHTML = `<button type="button" class="bp-coltitle">${this.source.fmt === 'R' ? 'R script' : 'Quarto'}${ICON.chevron}</button>`;
+      const f = this.source.fmt;
+      d.innerHTML = `<span class="bp-fmt"><button type="button" data-fmt="qmd" class="${f === 'qmd' ? 'bp-on' : ''}">.qmd</button>` +
+        `<button type="button" data-fmt="R" class="${f === 'R' ? 'bp-on' : ''}">.R</button></span>` +
+        '<span class="bp-bsp"></span><button type="button" class="bp-srcact" data-dl="page_dl">Download</button>' +
+        '<button type="button" class="bp-srcact" data-dl="page_html">Render HTML</button>';
       return d;
     }
 
@@ -363,31 +376,58 @@
         const a = e.target.closest('a');
         if (!a) return;
         this.el.classList.remove('bp-toc-open');
+        this.applyToc();
         if (a.dataset.block) this.jumpBlock(a.dataset.block);
         else this.jumpIndex(+a.dataset.index);
       });
-      this.el.querySelector('.bp-gutlabel').addEventListener('click', () => {
+      // The three switches in the bar: graph, code, contents.
+      this.el.querySelector('.bp-v-graph').addEventListener('click', () => {
         localStorage.setItem(this.gutterKey(), this.gutterOff ? 'on' : 'off');
         this.applyGutter();
         this.scheduleRail();
       });
+      this.el.querySelector('.bp-v-code').addEventListener('click', () => {
+        this.source.on = !this.sourceOn();
+        localStorage.setItem('blockr-page-source', this.source.on ? 'on' : 'off');
+        this.sendSource();
+        this.render();
+      });
+      this.el.querySelector('.bp-v-toc').addEventListener('click', () => {
+        if (this.narrow) this.el.classList.toggle('bp-toc-open');
+        else {
+          this.tocOn = !this.tocOn;
+          localStorage.setItem('blockr-page-toc', this.tocOn ? 'on' : 'off');
+        }
+        this.applyToc();
+        this.scheduleRail();
+      });
       this.el.querySelector('.bp-name').addEventListener('click', e => this.nameMenu(e.currentTarget));
       this.el.querySelector('.bp-save').addEventListener('click', e => this.saveMenu(e.currentTarget));
-      // The right column's title is its switch: Contents, or the source as
-      // Quarto or as an R script, beside the page.
-      this.el.addEventListener('click', e => {
-        const t = e.target.closest('.bp-coltitle');
-        if (t) this.columnMenu(t);
+      // The source's head: Quarto or R script, Download, Render HTML.
+      this.doc.addEventListener('click', e => {
+        const f = e.target.closest('.bp-srchead [data-fmt]');
+        if (f && f.dataset.fmt !== this.source.fmt) {
+          this.source.fmt = f.dataset.fmt;
+          localStorage.setItem('blockr-page-source-fmt', this.source.fmt);
+          this.sendSource();
+          this.render();
+        }
+        const d = e.target.closest('.bp-srchead [data-dl]');
+        if (d) {
+          const a = this.el.querySelector(`.bp-offscreen a[id$="${d.dataset.dl}"]`);
+          if (a) a.click();
+        }
       });
       window.addEventListener('resize', () => {
         const n = this.isNarrow();
         if (n === this.narrow) return;
         this.narrow = n;
+        this.el.classList.remove('bp-toc-open');
         this.applyGutter();
+        this.applyToc();
         this.sendSource();
         this.render();
       });
-      this.el.querySelector('.bp-toc-toggle').addEventListener('click', () => this.el.classList.toggle('bp-toc-open'));
       this.scrollEl.addEventListener('scroll', () => this.spy(), { passive: true });
       // Outputs settle after first paint (plots, tables): redraw the gutter then.
       if (window.ResizeObserver) new ResizeObserver(() => this.scheduleRail()).observe(this.doc);
@@ -555,30 +595,6 @@
       this.menu(anchor, { items: [
         { label: 'Download', meta: 'workflow file', onSelect: () => dl && dl.click() }
       ] });
-    }
-
-    columnMenu(anchor) {
-      const src = this.sourceOn(), fmt = this.source.fmt;
-      const show = f => {
-        this.source.on = f !== null;
-        if (f) this.source.fmt = f;
-        localStorage.setItem('blockr-page-source', this.source.on ? 'on' : 'off');
-        localStorage.setItem('blockr-page-source-fmt', this.source.fmt);
-        this.sendSource();
-        this.render();
-      };
-      const click = id => { const a = this.el.querySelector(`.bp-offscreen a[id$="${id}"]`); if (a) a.click(); };
-      const items = [
-        { label: 'Contents', current: !src, onSelect: () => show(null) },
-        { label: 'Quarto', meta: '.qmd', mono: true, current: src && fmt === 'qmd', onSelect: () => show('qmd') },
-        { label: 'R script', meta: '.R', mono: true, current: src && fmt === 'R', onSelect: () => show('R') }
-      ];
-      if (src) {
-        items.push({ divider: true },
-          { label: 'Download', meta: '.' + fmt, mono: true, onSelect: () => click('page_dl') },
-          { label: 'Render HTML', onSelect: () => click('page_html') });
-      }
-      this.menu(anchor, { items: items });
     }
 
     blockMoreMenu(index, id, anchor) {
@@ -867,8 +883,7 @@
 
     /* ---- contents ----------------------------------------------------------------------- */
     buildToc() {
-      let h = this.read || this.narrow ? '<div class="bp-th">Contents</div>'
-        : `<button type="button" class="bp-coltitle">Contents${ICON.chevron}</button>`;
+      let h = '<div class="bp-th">Contents</div>';
       this.state.items.forEach((it, i) => {
         if (it.text != null) {
           const lvl = headingLevel(it.text);
