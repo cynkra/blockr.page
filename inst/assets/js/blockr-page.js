@@ -1014,7 +1014,9 @@
       if (i < 0) return;
       const above = this.state.items.slice(0, i)
         .filter(it => it.block != null && !this.isProse(it)).map(it => it.block).reverse();
-      if (!above.length) return;
+      const nums = this._nums || {};
+      const refs = this.state.items.filter(it => nums[it.block]).map(it => it.block);
+      if (!above.length && !refs.length) return;
       e.preventDefault();
       const prose = host.querySelector('.blockr-prose').blockrProse;
       const a = this.caretAnchor(e.detail);
@@ -1028,13 +1030,25 @@
         if (!picked) prose.typeHere('@' + query);
       };
       const pick = (expr, open) => { picked = true; prose.insertChip(expr, open); };
+      const rows = [];
+      // a figure or a table, by its number
+      if (refs.length) {
+        rows.push({ title: 'Figures and tables' });
+        refs.forEach(id => {
+          const n = nums[id];
+          rows.push({ label: n.label + ' · ' + (n.caption || this.blockName(id)), keywords: this.blockName(id),
+            onSelect: () => { picked = true; prose.insertRef((n.kind === 'figure' ? 'fig-' : 'tbl-') + id); } });
+        });
+      }
+      // a value from a block above
+      if (above.length) {
+        if (rows.length) rows.push({ divider: true });
+        rows.push({ title: 'A value from' });
+        above.forEach(id => rows.push({ label: this.blockName(id), onSelect: () => this.valuesMenu(a, id, pick, finish) }));
+      }
       this.menu(a, {
-        caption: 'A value from',
-        filter: 'Search blocks', minWidth: 280,
-        items: above.map(id => ({
-          label: this.blockName(id),
-          onSelect: () => this.valuesMenu(a, id, pick, finish)
-        })),
+        filter: 'Search', minWidth: 280,
+        items: rows,
         // a pick waits for the block's values, and the menu they fill
         onClose: () => setTimeout(() => { if (!this.openMenu && !this._valuesCb) finish(); }, 0)
       });
@@ -1710,6 +1724,11 @@
     paintCaptions() {
       const nums = this.numbers();
       this._nums = nums;
+      // what a reference in a text shows: its figure's or table's number
+      const refs = {};
+      Object.entries(nums).forEach(([id, n]) => { refs['fig-' + id] = n.label; refs['tbl-' + id] = n.label; });
+      const any = this.doc.querySelector('.blockr-prose');
+      if (any && any.blockrProse) any.blockrProse.setRefs(refs);
       this.doc.querySelectorAll(':scope > .bp-blk').forEach(node => {
         const id = node.dataset.blockId, num = nums[id];
         let cap = node.querySelector(':scope > .bp-cap');
