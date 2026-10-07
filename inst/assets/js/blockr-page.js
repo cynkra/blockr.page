@@ -339,6 +339,17 @@
       });
       // A dot: drag to a gap to add a block there, onto a block to connect,
       // or click for a block right below.
+      // The item under the pointer, from pointer events: its hover buttons
+      // show while it holds the class. CSS :hover goes stale when the page
+      // re-renders under a pointer that is not moving.
+      const setZone = z => {
+        if (this.zone === z) return;
+        if (this.zone) this.zone.classList.remove('bp-hover');
+        this.zone = z;
+        if (z) z.classList.add('bp-hover');
+      };
+      this.doc.addEventListener('pointermove', e => setZone(e.target.closest('.bp-blk, .bp-text, .bp-ins')));
+      this.doc.addEventListener('pointerleave', () => setZone(null));
       // A grip: drag to move the item, click for its menu.
       this.doc.addEventListener('mousedown', e => {
         const h = e.target.closest('.bp-handle');
@@ -459,7 +470,13 @@
       if (!window.Blockr || !Blockr.menu) return;
       const user = cfg.onClose;
       const h = Blockr.menu(anchor, Object.assign({}, cfg, {
-        onClose: () => { if (this.openMenu === h) this.openMenu = null; if (user) user(); }
+        onClose: () => {
+          if (this.openMenu === h) this.openMenu = null;
+          if (user) user();
+          // the menu hands focus back to its button, which would keep a hover
+          // button showing after the pointer has left
+          setTimeout(() => { if (document.activeElement === anchor && anchor && anchor.closest('.bp-hb')) anchor.blur(); }, 0);
+        }
       }));
       this.openMenu = h;
     }
