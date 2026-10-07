@@ -484,16 +484,12 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-ip-x { --bp-hb: 24px; }
 .bp-panel .bp-band { display: block !important; margin: 0 0 6px; padding: 0; background: none; border: 0; }
 .bp-ip-lab { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--bp-subtle); margin: 18px 0 6px; }
-.bp-ip-sw, .bp-ip-from {
+.bp-ip-from {
   display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: none;
   font: inherit; font-size: 13px; color: var(--bp-text-2); padding: 5px 0; cursor: pointer; text-align: left;
 }
 .bp-ip-from { color: var(--bp-accent); justify-content: flex-start; }
 .bp-ip-from:hover { text-decoration: underline; }
-.bp-sw { width: 28px; height: 16px; border-radius: 999px; background: #d1d5db; position: relative; transition: background .15s; flex: none; }
-.bp-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .15s; }
-.bp-sw.bp-on { background: var(--bp-accent); }
-.bp-sw.bp-on::after { left: 14px; }
 .bp-blk.bp-selected { box-shadow: 0 0 0 8px var(--bp-bg), 0 0 0 9.5px var(--bp-accent-200); }
 .bp-blk .bp-bh .bp-bname { cursor: pointer; }
 .blockr-page.bp-read .bp-blk .bp-bh .bp-bname { cursor: auto; }

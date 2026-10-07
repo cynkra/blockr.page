@@ -1136,11 +1136,6 @@
       p.className = 'bp-panel';
       p.addEventListener('click', e => {
         if (e.target.closest('.bp-ip-x')) return this.closePanel();
-        const sw = e.target.closest('[data-switch]');
-        if (sw && this.panelFor) {
-          const idx = this.state.items.findIndex(it => it.block === this.panelFor);
-          if (idx >= 0) this.send({ type: 'toggle', index: idx, field: sw.dataset.switch });
-        }
         const from = e.target.closest('[data-from]');
         if (from) this.jumpBlock(from.dataset.from);
       });
@@ -1186,7 +1181,8 @@
       this.el.classList.remove('bp-panel-open');
       this.scheduleRail();
     }
-    // the report's switches and what the block reads from, as the state has them
+    // what the block reads from, as the state has it; Code and Output stay
+    // with the block's own buttons in the text
     refreshPanel() {
       if (!this.panelFor) return;
       const id = this.panelFor;
@@ -1199,12 +1195,8 @@
         this.el.classList.remove('bp-panel-open');
         return;
       }
-      const sw = (f, label, on) => `<button type="button" class="bp-ip-sw" data-switch="${f}" aria-pressed="${on}">` +
-        `<span>${label}</span><span class="bp-sw${on ? ' bp-on' : ''}"></span></button>`;
       const from = this.parents(id);
       this._panel.querySelector('.bp-ip-doc').innerHTML =
-        '<div class="bp-ip-lab">In the document</div>' +
-        sw('output', 'Output', it.output !== false) + sw('code', 'Code', it.code === true) +
         (from.length ? '<div class="bp-ip-lab">Reads from</div>' +
           from.map(f => `<button type="button" class="bp-ip-from" data-from="${esc(f)}">${esc(this.blockName(f))}</button>`).join('') : '');
       this._panel.querySelector('.bp-ip-name').textContent = this.blockName(id);
