@@ -411,3 +411,4 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .blockr-page.bp-no-gutter .bp-gutlabel, .bp-folded .bp-fold { background: #e5e7eb; color: var(--bp-text); }
 .bp-bh { gap: 6px; }
 .bp-bh .bp-bname { margin-right: 4px; }
+.bp-bh .blockr-block-mark { margin-right: 2px; }
