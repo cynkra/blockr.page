@@ -164,6 +164,7 @@
       this.read = this.readOnly;
       this.applyGutter();
       this.applyToc();
+      this.applyTheme();
       this.bind();
       this.sendSource();
     }
@@ -178,6 +179,17 @@
       this.el.classList.toggle('bp-no-gutter', this.gutterOff);
       this.el.querySelector('.bp-v-graph').classList.toggle('bp-on', !this.gutterOff);
     }
+    // Light or dark: as the system is, until the moon in the bar says
+    // otherwise; that choice is kept in the browser. blockr.ui's dark tokens
+    // key off data-bs-theme on the root.
+    applyTheme() {
+      const set = localStorage.getItem('blockr-page-theme');
+      const dark = set ? set === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+      const b = this.el.querySelector('.bp-v-theme');
+      if (b) b.classList.toggle('bp-on', dark);
+    }
+
     // Contents: a column on wide views, a sheet over the page on narrow ones.
     applyToc() {
       this.el.classList.toggle('bp-no-toc', !this.tocOn);
@@ -555,6 +567,18 @@
         this.sendSource();
         this.render();
       });
+      const theme = this.el.querySelector('.bp-v-theme');
+      if (theme) theme.addEventListener('click', () => {
+        const dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        localStorage.setItem('blockr-page-theme', dark ? 'light' : 'dark');
+        this.applyTheme();
+        window.dispatchEvent(new Event('resize'));
+      });
+      if (window.matchMedia) {
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+          if (!localStorage.getItem('blockr-page-theme')) this.applyTheme();
+        });
+      }
       this.el.querySelector('.bp-v-toc').addEventListener('click', () => {
         if (this.narrow) this.el.classList.toggle('bp-toc-open');
         else {
