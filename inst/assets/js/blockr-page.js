@@ -457,6 +457,21 @@
         e.preventDefault();
         this.openFind();
       });
+      // Right after Backspace or Delete removed a block or joined two texts,
+      // Cmd/Ctrl+Z in the text undoes that, not the text: the page's undo
+      // brings back both sides. Any other key and the text's undo is back.
+      document.addEventListener('keydown', e => {
+        if (!this._undoPage || ['Meta', 'Control', 'Shift', 'Alt'].includes(e.key)) return;
+        const z = (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key || '').toLowerCase() === 'z';
+        this._undoPage = false;
+        if (!z) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.send({ type: 'undo' });
+      }, true);
+      // a block marked for removal: any key but Backspace, or a click, lets it be
+      document.addEventListener('keydown', e => { if (this.armed && e.key !== 'Backspace') this.disarm(); }, true);
+      document.addEventListener('mousedown', () => this.disarm(), true);
       // Escape closes the panel, unless a menu or a field has it.
       document.addEventListener('keydown', e => {
         if (e.key !== 'Escape' || !this.panelFor || this.openMenu || e.defaultPrevented) return;
@@ -690,6 +705,21 @@
       if (at < items.length && this.isProse(items[at])) return this.focusItem(at, 'start');
       this.send({ type: 'add_block', at: at, registry: 'new_prose_block', from: '' });
     }
+    arm(id) {
+      this.disarm();
+      const node = this.blockNode(id);
+      if (!node) return;
+      this.armed = id;
+      node.classList.add('bp-armed');
+      this.toast(`Backspace again removes ${this.blockName(id)}.`);
+    }
+    disarm() {
+      if (!this.armed) return;
+      const node = this.blockNode(this.armed);
+      if (node) node.classList.remove('bp-armed');
+      this.armed = null;
+    }
+
     dropIfEmpty(host) {
       if (!host.isConnected || host.contains(document.activeElement) || this.slashing === host) return;
       const p = host.querySelector('.blockr-prose');
@@ -714,12 +744,26 @@
         return this.focusItem(j, where, x);
       }
       if (dir === 'back') {
+        // the block right above: a first Backspace marks it, a second
+        // removes it (and Cmd/Ctrl+Z brings it back)
+        const above = i > 0 ? items[i - 1] : null;
+        const node = above && above.block != null && !this.isProse(above) && this.blockNode(above.block);
+        if (node && !node.classList.contains('bp-folded-step') && !node.classList.contains('bp-compact')) {
+          e.preventDefault();
+          if (this.armed === above.block) {
+            this.disarm();
+            this._undoPage = true;
+            return this.send({ type: 'remove', index: i - 1 });
+          }
+          return this.arm(above.block);
+        }
         if (i > 0 && this.isProse(items[i - 1])) {
           const a = this.proseOf(items[i - 1].block), b = this.proseOf(items[i].block);
           if (!a || !b) return;
           e.preventDefault();
           const was = a.text();
           a.join(b.text());
+          this._undoPage = true;
           // undo brings both texts back as they were
           return this.send({ type: 'remove', index: i, texts: [items[i - 1].block], prior: { [items[i - 1].block]: was } });
         }
@@ -737,6 +781,7 @@
         e.preventDefault();
         const was = a.text();
         a.join(b.text());
+        this._undoPage = true;
         this.send({ type: 'remove', index: i + 1, texts: [items[i].block], prior: { [items[i].block]: was } });
       }
     }

@@ -537,3 +537,6 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-steps:hover .bp-steps-k { color: var(--bp-text); }
 .bp-blk.bp-folded-step { display: none; }
 .bp-blk.bp-folded-step + .bp-ins { display: none; }
+
+/* a block a Backspace has marked: the next one removes it */
+.bp-blk.bp-armed { box-shadow: 0 0 0 8px var(--bp-bg), 0 0 0 9.5px #fca5a5; }
