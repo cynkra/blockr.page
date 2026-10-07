@@ -228,8 +228,9 @@ page_callback <- function(board, update, session, ...) {
     {
       brd <- board$board
       its <- items()
-      ids <- item_block_ids(its)
       blks <- blockr.core::board_blocks(brd)
+      # a block just removed is still in the order until it catches up
+      ids <- intersect(item_block_ids(its), names(blks))
       lnk <- as.data.frame(blockr.core::board_links(brd))
       add <- NULL
       rm <- character()
@@ -260,8 +261,9 @@ page_callback <- function(board, update, session, ...) {
     {
       brd <- board$board
       its <- items()
-      ids <- item_block_ids(its)
       blks <- blockr.core::board_blocks(brd)
+      # a block just removed is still in the order until it catches up
+      ids <- intersect(item_block_ids(its), names(blks))
       for (id in ids[vapply(blks[ids], is_prose_block, logical(1L))]) {
         above <- ids[seq_len(match(id, ids) - 1L)]
         above <- above[!vapply(blks[above], is_prose_block, logical(1L))]
