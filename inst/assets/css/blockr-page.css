@@ -529,3 +529,16 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-cap-t:empty::before { content: attr(data-ph); color: var(--bp-subtle); }
 .blockr-page.bp-read .bp-cap-t:empty::before { content: none; }
 .bp-blk.bp-step .bp-cap, .bp-blk.bp-compact .bp-cap { display: none; }
+
+/* ---- steps in a row: one line ------------------------------------------------------- */
+.bp-steps {
+  display: flex; align-items: center; gap: 8px; height: 30px; margin: 6px 0; cursor: pointer;
+  font-size: 12.5px; color: var(--bp-subtle); white-space: nowrap; overflow: hidden;
+}
+.bp-steps svg { width: 11px; height: 11px; flex: none; transform: rotate(-90deg); transition: transform .12s; }
+.bp-steps.bp-open svg { transform: none; }
+.bp-steps-k { font-weight: 500; color: var(--bp-muted); }
+.bp-steps-n { overflow: hidden; text-overflow: ellipsis; }
+.bp-steps:hover .bp-steps-k { color: var(--bp-text); }
+.bp-blk.bp-folded-step { display: none; }
+.bp-blk.bp-folded-step + .bp-ins { display: none; }

@@ -146,6 +146,7 @@
       this.pendingFresh = null;
       this.freshDone = new Set();
       this.openSteps = new Set();
+      this.openRuns = new Set();
       this.source = {
         on: localStorage.getItem('blockr-page-source') === 'on',
         fmt: localStorage.getItem('blockr-page-source-fmt') === 'R' ? 'R' : 'qmd',
@@ -319,6 +320,7 @@
         }
       }
 
+      this.foldSteps();
       this.paintCaptions();
       this.buildToc();
       this.refreshPanel();
@@ -630,6 +632,13 @@
       if (t.closest('.bp-fold')) {
         const key = this.state.items[this.itemIndexOf(t)].section;
         this.folded.has(key) ? this.folded.delete(key) : this.folded.add(key);
+        return this.render();
+      }
+      // a folded run of steps opens and closes
+      const run = t.closest('.bp-steps');
+      if (run) {
+        const k = run.dataset.key;
+        this.openRuns.has(k) ? this.openRuns.delete(k) : this.openRuns.add(k);
         return this.render();
       }
       // a cell of a table: its value into the text
@@ -1642,7 +1651,8 @@
           if (this.parents(it.block).length) leaves.push({ id: it.block, el });
           return;
         }
-        const r = el.querySelector('.bp-bh').getBoundingClientRect();
+        const at = el.classList.contains('bp-folded-step') && this._runLine && this._runLine[it.block];
+        const r = (at || el.querySelector('.bp-bh')).getBoundingClientRect();
         ys.set(it.block, r.top - wr.top + r.height / 2);
         nodes.push({ id: it.block, from: this.parents(it.block) });
       });
@@ -1700,6 +1710,37 @@
       this.rail.querySelectorAll('.bp-edge').forEach(e =>
         e.classList.toggle('bp-hot', !!set && set.has(e.dataset.to) && set.has(e.dataset.from)));
       this.rail.querySelectorAll('.bp-dot').forEach(d => d.classList.toggle('bp-hot', !!set && set.has(d.dataset.id)));
+    }
+
+    /* ---- steps in a row fold into one line ---------------------------------------- */
+    // Two or more steps one after the other (blocks with Output off) show as
+    // one line, "3 steps", with their names; a click opens them.
+    foldSteps() {
+      this._runLine = {};
+      let run = [];
+      const flush = () => {
+        const nodes = run.map(id => this.blockNode(id));
+        if (run.length >= 2) {
+          const key = run[0], open = this.openRuns.has(key);
+          const line = document.createElement('div');
+          line.className = 'bp-steps bp-gen' + (open ? ' bp-open' : '');
+          line.dataset.key = key;
+          line.innerHTML = `${ICON.chev}<span class="bp-steps-k">${run.length} steps</span>` +
+            `<span class="bp-steps-n">${run.map(id => esc(this.blockName(id))).join(', ')}</span>`;
+          nodes[0].parentNode.insertBefore(line, nodes[0]);
+          nodes.forEach((n, k) => { n.classList.toggle('bp-folded-step', !open); this._runLine[run[k]] = line; });
+        } else {
+          nodes.forEach(n => n.classList.remove('bp-folded-step'));
+        }
+        run = [];
+      };
+      this.state.items.forEach(it => {
+        const n = it.block != null && this.blockNode(it.block);
+        if (n && it.output === false && !this.isProse(it) && !n.classList.contains('bp-compact') &&
+            !n.classList.contains('bp-unplaced')) run.push(it.block);
+        else if (it.block != null || it.section != null || it.text != null) flush();
+      });
+      flush();
     }
 
     /* ---- figures and tables: numbers and captions ---------------------------------- */
@@ -1814,6 +1855,10 @@
     }
     jumpBlock(id) {
       let node = this.doc.querySelector(`:scope > .bp-blk[data-block-id="${id}"]`);
+      if (node && node.classList.contains('bp-folded-step')) {
+        const line = this._runLine && this._runLine[id];
+        if (line) { this.openRuns.add(line.dataset.key); this.render(); node = this.blockNode(id); }
+      }
       if (node && node.classList.contains('bp-compact')) {
         // unfold the section that hides it
         const idx = this.state.items.findIndex(it => it.block === id);
