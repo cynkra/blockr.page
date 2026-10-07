@@ -89,3 +89,19 @@ test_that("a transform that feeds another block starts as a step", {
   expect_identical(page_items(b3)[[2L]], list(block = "s", code = TRUE, output = FALSE))
 })
 
+
+test_that("a figure or a table gets a Quarto label and caption", {
+  brd <- new_page_board(
+    blocks = c(cars = blockr.core::new_dataset_block("mtcars")),
+    items = list(list(block = "cars", caption = "The cars"))
+  )
+  code <- c(cars = "cars <- datasets::mtcars")
+  its <- page_items(brd)
+  qmd <- page_pieces(its, brd, code, "qmd", kinds = list(cars = "table"))[[1]]
+  expect_match(qmd, "#| label: tbl-cars", fixed = TRUE)
+  expect_match(qmd, "#| tbl-cap: \"The cars\"", fixed = TRUE)
+  # without a kind, the label is the block's id and there is no caption
+  qmd <- page_pieces(its, brd, code, "qmd")[[1]]
+  expect_match(qmd, "#| label: cars", fixed = TRUE)
+  expect_no_match(qmd, "cap:")
+})

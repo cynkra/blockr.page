@@ -194,7 +194,11 @@ block_item_flags <- function(it, defaults = NULL) {
   if (is.null(out)) {
     out <- if (it$block %in% names(defaults)) defaults[[it$block]] else TRUE
   }
-  list(block = it$block, code = isTRUE(it$code), output = isTRUE(out))
+  res <- list(block = it$block, code = isTRUE(it$code), output = isTRUE(out))
+  if (is.character(it$caption) && length(it$caption) == 1L && nzchar(it$caption)) {
+    res$caption <- it$caption
+  }
+  res
 }
 
 as_page_item <- function(x) {
@@ -206,7 +210,7 @@ as_page_item <- function(x) {
   x <- as.list(x)
 
   if (is.character(x[["block"]]) && length(x[["block"]]) == 1L) {
-    return(x[intersect(c("block", "code", "output"), names(x))])
+    return(x[intersect(c("block", "code", "output", "caption"), names(x))])
   }
 
   if (is.character(x[["section"]]) && length(x[["section"]]) == 1L) {

@@ -98,7 +98,8 @@ page_head <- function(title, fmt = "qmd") {
 
 # The source of every item, in item order: a character string per item.
 # `fmt` is "qmd" or "R".
-page_pieces <- function(items, board, code, fmt = "qmd", prose = list()) {
+page_pieces <- function(items, board, code, fmt = "qmd", prose = list(),
+                        kinds = list()) {
 
   spin <- identical(fmt, "R")
   blks <- blockr.core::board_blocks(board)
@@ -125,10 +126,17 @@ page_pieces <- function(items, board, code, fmt = "qmd", prose = list()) {
       # a chart the browser draws prints nothing in the document
       out <- isTRUE(it$output) && !browser_drawn(blks[[id]])
       show <- if (out) id
+      # a figure or a table: Quarto numbers it, and text refers to it by label
+      kind <- if (out) kinds[[id]]
+      cap <- if (is.null(it$caption)) blockr.core::block_name(blks[[id]]) else it$caption
+      pre <- c(figure = "fig", table = "tbl")[kind]
+      lab <- if (length(pre) && !is.na(pre)) paste0(pre, "-", id) else id
       if (spin) {
-        paste(c(paste0("#+ ", id, chunk_vis_spin(it$code, out)), body, show), collapse = "\n")
+        opt <- if (lab != id) paste0(", fig.cap=", encodeString(cap, quote = "\""))
+        paste(c(paste0("#+ ", lab, chunk_vis_spin(it$code, out), opt), body, show), collapse = "\n")
       } else {
-        paste(c("```{r}", paste("#| label:", id), chunk_vis_qmd(it$code, out),
+        capline <- if (lab != id) paste0("#| ", pre, "-cap: ", encodeString(cap, quote = "\""))
+        paste(c("```{r}", paste("#| label:", lab), capline, chunk_vis_qmd(it$code, out),
                 body, show, "```"), collapse = "\n")
       }
     }
@@ -136,8 +144,8 @@ page_pieces <- function(items, board, code, fmt = "qmd", prose = list()) {
 }
 
 page_document <- function(items, board, code, fmt = "qmd", title = NULL,
-                          prose = list()) {
-  pieces <- page_pieces(items, board, code, fmt, prose)
+                          prose = list(), kinds = list()) {
+  pieces <- page_pieces(items, board, code, fmt, prose, kinds)
   paste0(paste(c(page_head(title, fmt), unlist(pieces)), collapse = "\n\n"), "\n")
 }
 

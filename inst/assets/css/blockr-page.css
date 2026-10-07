@@ -520,3 +520,12 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-find.bp-find-ro [data-find="toggle"] { display: none; }
 ::highlight(bp-find) { background-color: #fef08a; }
 ::highlight(bp-find-cur) { background-color: #fbbf24; }
+
+/* ---- figures and tables: a number and a caption under each ------------------------ */
+.bp-cap { font-size: 13px; line-height: 1.5; color: var(--bp-text-2); margin: 4px 0 6px; }
+.bp-cap-n { font-weight: 600; color: var(--bp-text); }
+.bp-cap-t { outline: none; border-radius: 3px; }
+.bp-cap-t:focus { background: var(--bp-bg-subtle); box-shadow: 0 0 0 3px var(--bp-bg-subtle); }
+.bp-cap-t:empty::before { content: attr(data-ph); color: var(--bp-subtle); }
+.blockr-page.bp-read .bp-cap-t:empty::before { content: none; }
+.bp-blk.bp-step .bp-cap, .bp-blk.bp-compact .bp-cap { display: none; }

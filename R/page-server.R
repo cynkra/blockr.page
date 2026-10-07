@@ -163,7 +163,7 @@ page_callback <- function(board, update, session, ...) {
       n <- length(cur)
 
       changes <- c("add_block", "insert_in_text", "connect", "toggle", "add_text",
-                   "add_section", "edit_text", "move", "move_to", "remove")
+                   "add_section", "edit_text", "move", "move_to", "remove", "caption")
       if (act$type %in% changes) {
         i <- as.integer(act$index) + 1L
         texts <- unlist(act$texts)
@@ -290,6 +290,16 @@ page_callback <- function(board, update, session, ...) {
           }
         },
 
+        # a figure's or a table's caption
+        caption = {
+          i <- as.integer(act$index) + 1L
+          if (i <= n && is_block_item(cur[[i]])) {
+            txt <- trimws(if (is.null(act$text)) "" else act$text)
+            cur[[i]]$caption <- if (nzchar(txt)) txt else NULL
+            items(cur)
+          }
+        },
+
         toggle = {
           i <- as.integer(act$index) + 1L
           f <- act$field
@@ -402,6 +412,15 @@ page_callback <- function(board, update, session, ...) {
     }
   )
 
+  # What each block shows: a figure or a table, by its result. The page
+  # numbers them and gives them captions.
+  shiny::observe({
+    session$sendCustomMessage(
+      "blockr-page-kinds",
+      list(target = target, kinds = live_kinds(board))
+    )
+  })
+
   # "@" in a text asks what a block reports: its values, computed now.
   shiny::observeEvent(input$page_values_req, {
     id <- input$page_values_req$id
@@ -473,7 +492,8 @@ page_callback <- function(board, update, session, ...) {
           fmt = fmt,
           stem = page_file_stem(title()),
           head = page_head(title(), fmt),
-          pieces = page_pieces(items(), board$board, code, fmt, prose)
+          pieces = page_pieces(items(), board$board, code, fmt, prose,
+                               shiny::isolate(live_kinds(board)))
         )
       )
     }
@@ -482,7 +502,7 @@ page_callback <- function(board, update, session, ...) {
   source_text <- function(fmt) {
     shiny::isolate(
       page_document(items(), board$board, live_block_code(board), fmt, title(),
-                    live_prose_text(board))
+                    live_prose_text(board), live_kinds(board))
     )
   }
 
@@ -522,6 +542,31 @@ live_block_code <- function(board) {
     function(b) tryCatch(b$server$expr(), error = function(e) NULL)
   )
   block_code(exprs, board$board)
+}
+
+# Each block that shows a figure or a table, by block id: "figure" or "table".
+live_kinds <- function(board) {
+  blks <- blockr.core::board_blocks(board$board)
+  kinds <- lapply(stats::setNames(nm = names(blks)), function(id) {
+    if (is_prose_block(blks[[id]])) return(NULL)
+    res <- tryCatch(board$blocks[[id]]$server$result(), error = function(e) NULL)
+    page_kind(blks[[id]], res)
+  })
+  Filter(Negate(is.null), kinds)
+}
+
+# A figure is a plot or a chart, a table a data frame or a formatted table;
+# anything else (a model, a list) is neither and has no number.
+page_kind <- function(blk, res) {
+  if (inherits(blk, c("plot_block", "chart_block", "ggplot_block")) ||
+        inherits(res, c("ggplot", "htmlwidget", "recordedplot", "trellis", "grob"))) {
+    return("figure")
+  }
+  if (is.data.frame(res) || is.matrix(res) ||
+        inherits(res, c("gt_tbl", "gtsummary", "flextable", "table"))) {
+    return("table")
+  }
+  NULL
 }
 
 # The committed text of every prose block, by block id.
@@ -569,7 +614,8 @@ page_state <- function(items, board) {
       items,
       function(it) {
         if (is_block_item(it)) {
-          list(block = it$block, code = isTRUE(it$code), output = isTRUE(it$output))
+          list(block = it$block, code = isTRUE(it$code), output = isTRUE(it$output),
+               caption = if (is.null(it$caption)) "" else it$caption)
         } else if (is_section_item(it)) {
           list(section = it$section)
         } else {

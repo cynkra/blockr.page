@@ -319,6 +319,7 @@
         }
       }
 
+      this.paintCaptions();
       this.buildToc();
       this.refreshPanel();
       // the cards are on the page before the first order arrives; show it once laid out
@@ -1687,6 +1688,65 @@
       this.rail.querySelectorAll('.bp-dot').forEach(d => d.classList.toggle('bp-hot', !!set && set.has(d.dataset.id)));
     }
 
+    /* ---- figures and tables: numbers and captions ---------------------------------- */
+    // Every block that shows a figure or a table, numbered in reading order.
+    numbers() {
+      const kinds = this.kinds || {};
+      const n = { figure: 0, table: 0 }, out = {};
+      this.state.items.forEach(it => {
+        const k = it.block != null && it.output !== false && kinds[it.block];
+        if (!k || this.isProse(it)) return;
+        n[k]++;
+        out[it.block] = { kind: k, n: n[k], label: (k === 'figure' ? 'Figure ' : 'Table ') + n[k], caption: it.caption || '' };
+      });
+      return out;
+    }
+    setKinds(kinds) {
+      this.kinds = asObj(kinds);
+      this.paintCaptions();
+      this.buildToc();
+    }
+    // A caption under each: "Figure 2." and its text, typed in place.
+    paintCaptions() {
+      const nums = this.numbers();
+      this._nums = nums;
+      this.doc.querySelectorAll(':scope > .bp-blk').forEach(node => {
+        const id = node.dataset.blockId, num = nums[id];
+        let cap = node.querySelector(':scope > .bp-cap');
+        if (!num) { if (cap) cap.remove(); return; }
+        if (!cap) {
+          cap = document.createElement('div');
+          cap.className = 'bp-cap';
+          cap.innerHTML = '<b class="bp-cap-n"></b> <span class="bp-cap-t" spellcheck="true"></span>';
+          const t = cap.querySelector('.bp-cap-t');
+          t.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+              e.preventDefault();
+              if (e.key === 'Escape') t.textContent = t.dataset.was || '';
+              t.blur();
+            }
+          });
+          t.addEventListener('blur', () => {
+            const txt = t.textContent.trim(), i = this.state.items.findIndex(x => x.block === id);
+            if (i >= 0 && txt !== (t.dataset.was || '')) {
+              t.dataset.was = txt;
+              this.send({ type: 'caption', index: i, text: txt });
+            }
+          });
+          node.appendChild(cap);
+        }
+        const t = cap.querySelector('.bp-cap-t');
+        t.contentEditable = this.read ? 'false' : 'plaintext-only';
+        t.dataset.ph = 'Add a caption';
+        cap.querySelector('.bp-cap-n').textContent = num.label + '.';
+        if (document.activeElement !== t) {
+          t.textContent = num.caption;
+          t.dataset.was = num.caption;
+        }
+        cap.classList.toggle('bp-cap-empty', !num.caption);
+      });
+    }
+
     /* ---- contents ----------------------------------------------------------------------- */
     buildToc() {
       let h = '<div class="bp-th">Contents</div>' +
@@ -1696,7 +1756,10 @@
           h += `<a class="bp-t-h bp-t-h2" data-index="${i}">${esc(it.section)}</a>`;
         } else if (it.block != null) {
           if (!(this.state.blocks[it.block] || {}).prose) {
-            h += `<a class="bp-t-b" data-block="${esc(it.block)}" data-index="${i}"><i></i>${esc(this.blockName(it.block))}</a>`;
+            // a figure or a table by its number and caption
+            const num = (this._nums || {})[it.block];
+            const label = num ? `${num.label} · ${num.caption || this.blockName(it.block)}` : this.blockName(it.block);
+            h += `<a class="bp-t-b${num ? ' bp-t-num' : ''}" data-block="${esc(it.block)}" data-index="${i}"><i></i>${esc(label)}</a>`;
           }
         }
       });
@@ -1762,6 +1825,7 @@
     Shiny.addCustomMessageHandler('blockr-page', msg => { const p = pageFor(msg.target); if (p) p.update(msg); });
     Shiny.addCustomMessageHandler('blockr-page-toast', msg => { const p = pageFor(msg.target); if (p) p.toast(msg.msg); });
     Shiny.addCustomMessageHandler('blockr-page-values', msg => { const p = pageFor(msg.target); if (p) p.gotValues(msg); });
+    Shiny.addCustomMessageHandler('blockr-page-kinds', msg => { const p = pageFor(msg.target); if (p) p.setKinds(msg.kinds); });
     Shiny.addCustomMessageHandler('blockr-page-code', msg => {
       const p = pageFor(msg.target);
       if (!p) return;
