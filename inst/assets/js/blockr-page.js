@@ -557,6 +557,8 @@
       });
       this.el.querySelector('.bp-name').addEventListener('click', e => this.nameMenu(e.currentTarget));
       this.el.querySelector('.bp-save').addEventListener('click', e => this.saveMenu(e.currentTarget));
+      const exp = this.el.querySelector('.bp-export');
+      if (exp) exp.addEventListener('click', e => this.exportMenu(e.currentTarget));
       // The source's head: Quarto or R script, Download, Render HTML.
       this.doc.addEventListener('click', e => {
         const f = e.target.closest('.bp-srchead [data-fmt]');
@@ -1371,6 +1373,31 @@
       const dl = this.el.querySelector('.bp-offscreen a.shiny-download-link[id$="serialize"]');
       this.menu(anchor, { items: [
         { label: 'Download', meta: 'workflow file', onSelect: () => dl && dl.click() }
+      ] });
+    }
+
+    // The document to hand in: rendered by Quarto as Word, PDF or a web page,
+    // or its source. Code shows where a block's Code switch is on.
+    exportMenu(anchor) {
+      const dl = (id, msg) => () => {
+        const a = this.el.querySelector(`.bp-offscreen a[id$="${id}"]`);
+        if (!a) return;
+        if (msg) this.toast(msg);
+        a.click();
+      };
+      const src = fmt => () => {
+        this.source.fmt = fmt;
+        localStorage.setItem('blockr-page-source-fmt', fmt);
+        this.sendSource();
+        setTimeout(dl('page_dl'), 300);
+      };
+      this.menu(anchor, { align: 'end', minWidth: 240, items: [
+        { label: 'Word', meta: '.docx', onSelect: dl('page_docx', 'Rendering the Word document…') },
+        { label: 'PDF', meta: '.pdf', onSelect: dl('page_pdf', 'Rendering the PDF…') },
+        { label: 'Web page', meta: '.html', onSelect: dl('page_html', 'Rendering the web page…') },
+        { divider: true },
+        { label: 'Quarto document', meta: '.qmd', onSelect: src('qmd') },
+        { label: 'R script', meta: '.R', onSelect: src('R') }
       ] });
     }
 

@@ -28,6 +28,10 @@ board_ui.page_board <- function(id, x, plugins = blockr.core::board_plugins(x),
           class = "bp-q bp-save", type = "button", "Save",
           htmltools::HTML(icon_svg("chevron"))
         ),
+        htmltools::tags$button(
+          class = "bp-q bp-export", type = "button", "Export",
+          htmltools::HTML(icon_svg("chevron"))
+        ),
         htmltools::span(class = "bp-sp"),
         # what the page shows besides the document: its graph in the gutter,
         # its source beside it, its contents on the right. Each on or off.
@@ -55,7 +59,11 @@ board_ui.page_board <- function(id, x, plugins = blockr.core::board_plugins(x),
         htmltools::tags$a(id = ns("page_dl"), class = "shiny-download-link",
                           href = "", target = "_blank", download = NA, "source"),
         htmltools::tags$a(id = ns("page_html"), class = "shiny-download-link",
-                          href = "", target = "_blank", download = NA, "html")
+                          href = "", target = "_blank", download = NA, "html"),
+        htmltools::tags$a(id = ns("page_docx"), class = "shiny-download-link",
+                          href = "", target = "_blank", download = NA, "docx"),
+        htmltools::tags$a(id = ns("page_pdf"), class = "shiny-download-link",
+                          href = "", target = "_blank", download = NA, "pdf")
       ),
       htmltools::div(
         class = "bp-body",

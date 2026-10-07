@@ -57,6 +57,7 @@ body { font-family: var(--bs-body-font-family); font-optical-sizing: auto; }
 .bp-name .bp-nm { font-size: 14px; font-weight: 600; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bp-save { color: var(--bp-muted); }
 .blockr-page.bp-readonly .bp-save { display: none; }
+.bp-export { color: var(--bp-muted); }
 .blockr-page.bp-readonly .bp-name { pointer-events: none; }
 .blockr-page.bp-readonly .bp-name .bp-chevron { display: none; }
 .bp-views { display: inline-flex; gap: 6px; }

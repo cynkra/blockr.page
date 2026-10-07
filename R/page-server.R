@@ -499,10 +499,10 @@ page_callback <- function(board, update, session, ...) {
     }
   )
 
-  source_text <- function(fmt) {
+  source_text <- function(fmt, to = "html") {
     shiny::isolate(
       page_document(items(), board$board, live_block_code(board), fmt, title(),
-                    live_prose_text(board), live_kinds(board))
+                    live_prose_text(board), live_kinds(board), to)
     )
   }
 
@@ -517,19 +517,26 @@ page_callback <- function(board, update, session, ...) {
     }
   )
 
-  session$output$page_html <- shiny::downloadHandler(
-    filename = function() paste0(page_file_stem(shiny::isolate(title())), ".html"),
-    content = function(file) {
-      tryCatch(
-        render_page_html(source_text("qmd"), file),
-        error = function(e) {
-          toast("The document did not render. The message is in the R console.")
-          message(conditionMessage(e))
-          stop(e)
-        }
-      )
-    }
-  )
+  # The document rendered: a web page, Word or PDF.
+  render_download <- function(to) {
+    shiny::downloadHandler(
+      filename = function() paste0(page_file_stem(shiny::isolate(title())), ".", to),
+      content = function(file) {
+        tryCatch(
+          render_page(source_text("qmd", to), file, to),
+          error = function(e) {
+            toast("The document did not render. The message is in the R console.")
+            message(conditionMessage(e))
+            stop(e)
+          }
+        )
+      }
+    )
+  }
+  session$output$page_html <- render_download("html")
+  session$output$page_docx <- render_download("docx")
+  session$output$page_pdf <- render_download("pdf")
+
 
   list(page_items = items)
 }

@@ -105,3 +105,15 @@ test_that("a figure or a table gets a Quarto label and caption", {
   expect_match(qmd, "#| label: cars", fixed = TRUE)
   expect_no_match(qmd, "cap:")
 })
+
+test_that("Word and PDF get their own head and print tables in part", {
+  html <- page_head("T")
+  expect_match(html, "embed-resources: true", fixed = TRUE)
+  expect_match(page_head("T", to = "docx"), "format: docx", fixed = TRUE)
+  expect_match(page_head("T", to = "pdf"), "typst:\n    fig-format: png", fixed = TRUE)
+  brd <- new_page_board(blocks = c(cars = blockr.core::new_dataset_block("mtcars")))
+  code <- c(cars = "cars <- datasets::mtcars")
+  doc <- page_document(page_items(brd), brd, code, "qmd", "T", to = "docx")
+  expect_match(doc, "registerS3method(\"knit_print\"", fixed = TRUE)
+  expect_no_match(page_document(page_items(brd), brd, code, "qmd", "T"), "registerS3method")
+})

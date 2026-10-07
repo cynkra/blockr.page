@@ -73,14 +73,19 @@ chunk_vis_spin <- function(code, output) {
   else ", include=FALSE"
 }
 
-yaml_header <- function(title) {
+# `to`: the format the document is for. HTML pages its tables; Word and PDF
+# (through Typst, which Quarto brings along) print them whole.
+yaml_header <- function(title, to = "html") {
+  fmt <- switch(
+    to,
+    docx = "format: docx",
+    pdf = c("format:", "  typst:", "    fig-format: png"),
+    c("format:", "  html:", "    embed-resources: true", "df-print: paged")
+  )
   c(
     "---",
     if (!is.null(title)) paste0("title: \"", gsub("\"", "\\\\\"", title), "\""),
-    "format:",
-    "  html:",
-    "    embed-resources: true",
-    "df-print: paged",
+    fmt,
     "execute:",
     "  warning: false",
     "  message: false",
@@ -90,8 +95,8 @@ yaml_header <- function(title) {
 
 # The document's head: the YAML header with the page's title, commented out
 # for spin.
-page_head <- function(title, fmt = "qmd") {
-  head <- yaml_header(title)
+page_head <- function(title, fmt = "qmd", to = "html") {
+  head <- yaml_header(title, to)
   if (identical(fmt, "R")) head <- paste0("#' ", head)
   paste(head, collapse = "\n")
 }
@@ -144,9 +149,33 @@ page_pieces <- function(items, board, code, fmt = "qmd", prose = list(),
 }
 
 page_document <- function(items, board, code, fmt = "qmd", title = NULL,
-                          prose = list(), kinds = list()) {
+                          prose = list(), kinds = list(), to = "html") {
   pieces <- page_pieces(items, board, code, fmt, prose, kinds)
-  paste0(paste(c(page_head(title, fmt), unlist(pieces)), collapse = "\n\n"), "\n")
+  setup <- if (!identical(to, "html") && !identical(fmt, "R")) print_setup()
+  paste0(paste(c(page_head(title, fmt, to), setup, unlist(pieces)), collapse = "\n\n"), "\n")
+}
+
+# On paper a data frame prints as a table of its first rows and columns, as
+# the page shows it, with a note of how many there are; the web page pages
+# through them.
+print_setup <- function() {
+  paste(c(
+    "```{r}",
+    "#| include: false",
+    "registerS3method(\"knit_print\", \"data.frame\", function(x, ...) {",
+    "  r <- min(nrow(x), 10L)",
+    "  k <- min(ncol(x), 6L)",
+    "  out <- knitr::kable(x[seq_len(r), seq_len(k), drop = FALSE], row.names = FALSE)",
+    "  note <- c(if (r < nrow(x)) paste(\"first\", r, \"of\", nrow(x), \"rows\"),",
+    "            if (k < ncol(x)) paste(k, \"of\", ncol(x), \"columns\"))",
+    "  if (length(note)) {",
+    "    note <- paste(note, collapse = \", \")",
+    "    out <- c(out, \"\", paste0(\"*\", toupper(substr(note, 1, 1)), substring(note, 2), \".*\"))",
+    "  }",
+    "  knitr::asis_output(paste(out, collapse = \"\\n\"))",
+    "}, envir = asNamespace(\"knitr\"))",
+    "```"
+  ), collapse = "\n")
 }
 
 page_file_stem <- function(title) {
@@ -155,9 +184,9 @@ page_file_stem <- function(title) {
   if (nzchar(stem)) stem else "page"
 }
 
-# quarto renders the .qmd in a scratch directory; the HTML is
-# self-contained (embed-resources).
-render_page_html <- function(text, file) {
+# quarto renders the .qmd in a scratch directory: to "html" (self-contained,
+# embed-resources), "docx" or "pdf" (through Typst).
+render_page <- function(text, file, to = "html") {
 
   dir <- tempfile("blockr-page-")
   dir.create(dir)
@@ -167,16 +196,17 @@ render_page_html <- function(text, file) {
   writeLines(text, qmd)
 
   out <- suppressWarnings(
-    system2("quarto", c("render", shQuote(qmd), "--to", "html", "--quiet"),
+    system2("quarto", c("render", shQuote(qmd), "--to", if (to == "pdf") "typst" else to,
+                        "--quiet"),
             stdout = TRUE, stderr = TRUE)
   )
 
-  html <- file.path(dir, "page.html")
+  res <- file.path(dir, paste0("page.", to))
 
-  if (!file.exists(html)) {
+  if (!file.exists(res)) {
     stop("quarto could not render the page:\n",
          paste(utils::tail(out, 15L), collapse = "\n"), call. = FALSE)
   }
 
-  file.copy(html, file, overwrite = TRUE)
+  file.copy(res, file, overwrite = TRUE)
 }
