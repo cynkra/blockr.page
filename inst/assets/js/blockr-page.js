@@ -659,6 +659,15 @@
         if (this.panelFor !== blk.dataset.blockId) this.openPanel(blk.dataset.blockId);
         return;
       }
+      // A chart keeps its settings under its own gear: a click on its frame
+      // (title, the space around it) opens them there. The plot's clicks are
+      // its own.
+      if (blk && blk.classList.contains('bp-out-hidden') && t.closest('.bp-band') &&
+          !t.closest(OWN_CLICKS + ', svg, .blockr-settings, .blockr-menu') && document.getSelection().isCollapsed) {
+        const gear = blk.querySelector('.bp-band .blockr-gear-btn');
+        if (gear) gear.click();
+        return;
+      }
       if (blk && t.closest('.bp-bh')) {
         if (blk.classList.contains('bp-compact')) return this.jumpBlock(blk.dataset.blockId);
         const idx = this.itemIndexOf(blk);
