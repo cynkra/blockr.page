@@ -339,6 +339,11 @@
       });
       // A dot: drag to a gap to add a block there, onto a block to connect,
       // or click for a block right below.
+      // A grip: drag to move the item, click for its menu.
+      this.doc.addEventListener('mousedown', e => {
+        const h = e.target.closest('.bp-handle');
+        if (h && e.button === 0 && !this.read) this.startMove(e, this.itemIndexOf(h));
+      });
       this.rail.addEventListener('mousedown', e => {
         const d = e.target.closest('.bp-dot');
         if (d && e.button === 0) this.startDrag(e, d.dataset.id);
@@ -395,7 +400,10 @@
       const blk = t.closest('.bp-blk');
       if (this.read) return;
       if (t.closest('.bp-insbtn')) return this.insertMenu(+t.closest('.bp-ins').dataset.at, t.closest('.bp-insbtn'));
-      if (t.closest('.bp-handle')) return this.itemMenu(this.itemIndexOf(t), t.closest('.bp-handle'));
+      if (t.closest('.bp-handle')) {
+        if (this._dragged) { this._dragged = false; return; }
+        return this.itemMenu(this.itemIndexOf(t), t.closest('.bp-handle'));
+      }
       if (t.closest('.bp-fold')) {
         const key = headingText(this.state.items[this.itemIndexOf(t)].text);
         this.folded.has(key) ? this.folded.delete(key) : this.folded.add(key);
@@ -682,6 +690,85 @@
         ins.classList.add('bp-drop');
         this.blockMenu(ins.querySelector('.bp-insline'), +ins.dataset.at, id, () => ins.classList.remove('bp-drop'));
       };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    // Drag an item by its grip into another gap. A block stays below the
+    // blocks it reads from and above the ones that read from it; outside
+    // that range the gap says why and nothing moves.
+    startMove(e, index) {
+      const it = this.state.items[index];
+      if (!it) return;
+      const pos = id => this.state.items.findIndex(x => x.block === id);
+      let lo = 0, hi = this.state.items.length, loWhy = null, hiWhy = null;
+      if (it.block != null) {
+        this.parents(it.block).forEach(p => { const k = pos(p) + 1; if (k > lo) { lo = k; loWhy = p; } });
+        this.state.links.forEach(l => {
+          if (l.from !== it.block) return;
+          const k = pos(l.to);
+          if (k >= 0 && k < hi) { hi = k; hiWhy = l.to; }
+        });
+      }
+      const node = it.block != null
+        ? this.doc.querySelector(`:scope > .bp-blk[data-block-id="${CSS.escape(it.block)}"]`)
+        : this.doc.querySelector(`:scope > .bp-text[data-index="${index}"]`);
+      const say = document.createElement('div');
+      say.className = 'bp-say';
+      this.el.appendChild(say);
+      const x0 = e.clientX, y0 = e.clientY;
+      let moved = false, target = null, last = null;
+      const clear = () => this.doc.querySelectorAll('.bp-ins.bp-drop, .bp-ins.bp-drop-bad')
+        .forEach(n => n.classList.remove('bp-drop', 'bp-drop-bad'));
+      const onMove = ev => {
+        last = ev;
+        if (!moved && Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) < 6) return;
+        if (!moved) {
+          moved = true;
+          this.el.classList.add('bp-dragging');
+          if (node) node.classList.add('bp-moving');
+        }
+        clear(); target = null; say.className = 'bp-say';
+        let best = null, bd = Infinity;
+        this.doc.querySelectorAll(':scope > .bp-ins').forEach(n => {
+          const b = n.getBoundingClientRect(), d = Math.abs(b.top + b.height / 2 - ev.clientY);
+          if (d < bd) { bd = d; best = n; }
+        });
+        if (!best) return;
+        const at = +best.dataset.at;
+        if (at === index || at === index + 1) return;
+        const r = this.el.getBoundingClientRect();
+        const sayAt = msg => {
+          say.textContent = msg;
+          say.className = 'bp-say bp-show bp-bad';
+          say.style.left = (ev.clientX - r.left + 14) + 'px';
+          say.style.top = (ev.clientY - r.top + 16) + 'px';
+        };
+        if (at < lo) { best.classList.add('bp-drop-bad'); return sayAt(`${this.blockName(it.block)} reads from ${this.blockName(loWhy)}, so it stays below it`); }
+        if (at > hi) { best.classList.add('bp-drop-bad'); return sayAt(`${this.blockName(hiWhy)} reads from ${this.blockName(it.block)}, so it stays above it`); }
+        best.classList.add('bp-drop');
+        best.dataset.label = 'Move here';
+        target = at;
+      };
+      const tick = setInterval(() => {
+        if (!last || !moved) return;
+        const sr = this.scrollEl.getBoundingClientRect();
+        const step = last.clientY > sr.bottom - 60 ? 16 : last.clientY < sr.top + 60 ? -16 : 0;
+        if (step) { this.scrollEl.scrollTop += step; onMove(last); }
+      }, 16);
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        clearInterval(tick);
+        say.remove(); clear();
+        this.el.classList.remove('bp-dragging');
+        if (node) node.classList.remove('bp-moving');
+        if (!moved) return;
+        this._dragged = true;
+        setTimeout(() => { this._dragged = false; }, 0);
+        if (target != null) this.send({ type: 'move_to', index: index, at: target });
+      };
+      e.preventDefault();
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     }

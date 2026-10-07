@@ -304,6 +304,9 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-blk.bp-drop-ok { box-shadow: 0 0 0 6px var(--bp-bg), 0 0 0 7px #93c5fd, 0 0 0 10px var(--bp-accent-50); }
 .bp-blk.bp-drop-no { box-shadow: 0 0 0 6px var(--bp-bg), 0 0 0 7px #fecaca, 0 0 0 10px #fef2f2; }
 .bp-ins.bp-drop .bp-insline { background: var(--blockr-blue-500, #3b82f6); height: 3px; top: 5px; }
+.bp-ins.bp-drop-bad .bp-insline { background: #fca5a5; height: 3px; top: 5px; }
+.bp-blk.bp-moving, .bp-text.bp-moving { opacity: .35; }
+.blockr-page.bp-dragging .bp-ins .bp-insbtn { opacity: 0; }
 .bp-ins.bp-drop::after {
   content: attr(data-label); position: absolute; left: 8px; top: -9px; background: var(--bp-bg); padding: 0 6px;
   font-size: 11.5px; font-weight: 600; color: var(--bp-accent); white-space: nowrap;

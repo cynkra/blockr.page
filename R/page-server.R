@@ -74,6 +74,17 @@ page_callback <- function(board, update, session, ...) {
     )
   }
 
+  # A new order, unless it puts a block above one it reads from.
+  reorder <- function(new) {
+    bad <- broken_link(new, link_frame(board$board))
+    if (is.null(bad)) {
+      items(new)
+    } else {
+      nms <- block_names(board$board, bad)
+      toast(paste0(nms[2L], " reads from ", nms[1L], ", so it stays below it."))
+    }
+  }
+
   shiny::observeEvent(
     input$page_action,
     {
@@ -153,16 +164,19 @@ page_callback <- function(board, update, session, ...) {
           if (i >= 1L && j >= 1L && i <= n && j <= n) {
             new <- cur
             new[c(i, j)] <- cur[c(j, i)]
-            bad <- broken_link(new, link_frame(board$board))
-            if (is.null(bad)) {
-              items(new)
-            } else {
-              nms <- block_names(board$board, bad)
-              toast(
-                paste0(nms[2L], " reads from ", nms[1L],
-                       ", so it stays below it.")
-              )
-            }
+            reorder(new)
+          }
+        },
+
+        # dragged by its grip: item `index` goes into the gap before item
+        # `at` (`at` = n for the end), both 0-based
+        move_to = {
+          i <- as.integer(act$index) + 1L
+          at <- as.integer(act$at) + 1L
+          if (i >= 1L && i <= n && at >= 1L && at <= n + 1L &&
+                at != i && at != i + 1L) {
+            after <- if (at > i) at - 2L else at - 1L
+            reorder(append(cur[-i], cur[i], after = after))
           }
         },
 

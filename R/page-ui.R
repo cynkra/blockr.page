@@ -146,6 +146,11 @@ page_block_card <- function(blk, blk_id, ns) {
         htmltools::HTML(icon_svg("dots"))
       )
     ),
+    # the grip: drag to move the block, click for Move up / down and Remove
+    htmltools::tags$button(
+      class = "bp-handle bp-hb bp-hb-s", type = "button",
+      `aria-label` = "Move or remove", htmltools::HTML(icon_svg("grip"))
+    ),
     htmltools::div(class = "bp-band", blockr.core::expr_ui(srv_id, blk)),
     htmltools::tags$pre(class = "bp-codeview"),
     htmltools::div(class = "bp-out", block_ui(srv_id, blk))
