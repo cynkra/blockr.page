@@ -18,6 +18,7 @@
     chevron: '<svg class="bp-chevron" viewBox="0 0 12 12" width="12" height="12"><polyline points="3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     list: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm-3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>',
     filecode: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3"/><path d="M6.3 8 5 9.5 6.3 11M9.7 8 11 9.5 9.7 11" stroke-linecap="round"/></svg>',
+    link: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2.3-2.3a3 3 0 0 0-4.2-4.2L7.6 4.2"/><path d="M9.5 6.5a3 3 0 0 0-4.2 0L3 8.8A3 3 0 0 0 7.2 13l1.2-1.2"/></svg>',
     plus: '<svg viewBox="0 0 10 10"><path d="M5 1.5v7M1.5 5h7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
     grip: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3" r="1.3"/><circle cx="10.5" cy="3" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="13" r="1.3"/><circle cx="10.5" cy="13" r="1.3"/></svg>',
     chev: '<svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>',
@@ -34,6 +35,52 @@
 
   // Shiny sends an empty named list as [].
   const asObj = x => (x && !Array.isArray(x)) ? x : {};
+
+  // A text is edited as it reads and stored as markdown: the edited HTML
+  // back to markdown, for what the editor can make (paragraphs, bold,
+  // italic, links, code, lists, headings, quotes).
+  function mdInline(node) {
+    let out = '';
+    node.childNodes.forEach(n => {
+      if (n.nodeType === 3) { out += n.nodeValue.replace(/\u00a0/g, ' '); return; }
+      if (n.nodeType !== 1) return;
+      const tag = n.tagName.toLowerCase(), inner = mdInline(n);
+      const wrap = m => {
+        const t = inner.trim();
+        if (!t) return inner;
+        const lead = inner.match(/^\s*/)[0], tail = inner.match(/\s*$/)[0];
+        return lead + m + t + m + tail;
+      };
+      if (tag === 'b' || tag === 'strong') out += wrap('**');
+      else if (tag === 'i' || tag === 'em') out += wrap('*');
+      else if (tag === 'code') out += wrap('`');
+      else if (tag === 'a') out += `[${inner}](${n.getAttribute('href') || ''})`;
+      else if (tag === 'br') out += '\n';
+      else out += inner;
+    });
+    return out;
+  }
+  function htmlToMd(root) {
+    const blocks = [];
+    let loose = '';
+    const flush = () => { if (loose.trim()) blocks.push(loose.trim()); loose = ''; };
+    root.childNodes.forEach(n => {
+      if (n.nodeType === 3) { loose += n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      const tag = n.tagName.toLowerCase();
+      if (/^(b|strong|i|em|a|code|span|br)$/.test(tag)) { loose += tag === 'br' ? '\n' : mdInline({ childNodes: [n] }); return; }
+      flush();
+      const h = /^h([1-6])$/.exec(tag);
+      if (h) blocks.push('#'.repeat(+h[1]) + ' ' + mdInline(n).trim());
+      else if (tag === 'ul' || tag === 'ol') {
+        blocks.push([...n.children].map((li, k) => (tag === 'ol' ? (k + 1) + '. ' : '- ') + mdInline(li).trim()).join('\n'));
+      } else if (tag === 'blockquote') blocks.push(htmlToMd(n).split('\n').map(l => '> ' + l).join('\n'));
+      else if (tag === 'pre') blocks.push('```\n' + n.textContent.replace(/\n$/, '') + '\n```');
+      else { const t = mdInline(n).trim(); if (t) blocks.push(t); }
+    });
+    flush();
+    return blocks.join('\n\n');
+  }
 
   /* ---- graph layout: one lane per branch, edges run down the parent lane --- */
   function assignLanes(nodes) {
@@ -233,13 +280,13 @@
 
       const one = this.doc.querySelector('.bp-writer input');
       if (one) { one.focus(); one.select(); }
-      const ta = this.doc.querySelector('.bp-writer textarea');
-      if (ta) {
-        const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
-        ta.addEventListener('input', grow);
-        grow();
-        ta.focus();
-        ta.setSelectionRange(ta.value.length, ta.value.length);
+      const ed = this.doc.querySelector('.bp-writer .bp-ed');
+      if (ed) {
+        document.execCommand('defaultParagraphSeparator', false, 'p');
+        ed.focus();
+        const sel = document.getSelection();
+        sel.selectAllChildren(ed);
+        sel.collapseToEnd();
       }
 
       if (this.pendingFresh) {
@@ -287,10 +334,9 @@
       const d = document.createElement('div');
       d.dataset.index = i;
       if (this.editing === i) {
-        d.className = 'bp-writer bp-gen';
-        d.innerHTML = `<textarea spellcheck="true">${esc(it.text)}</textarea>
-          <div class="bp-wf"><span>**bold** · *italic* · Ctrl+Enter</span><span class="bp-bsp"></span>
-          <button type="button" class="bp-wdiscard">Discard</button><button type="button" class="bp-wdone">Done</button></div>`;
+        // edited as it reads, on the tint it has under the pointer
+        d.className = 'bp-writer bp-text-writer bp-gen';
+        d.innerHTML = `<div class="bp-ed" contenteditable="true" spellcheck="true">${it.text.trim() ? it.html : '<p><br></p>'}</div>`;
         return d;
       }
       d.className = 'bp-text bp-gen' + (it.text.trim() ? '' : ' bp-text-empty');
@@ -352,8 +398,23 @@
         if (!e.target.closest('.bp-writer')) return;
         const one = e.target.tagName === 'INPUT';
         if (e.key === 'Enter' && (one || e.ctrlKey || e.metaKey)) { e.preventDefault(); this.finishEdit(true); }
+        if (e.key === 'k' && (e.ctrlKey || e.metaKey) && !one) { e.preventDefault(); this.fmt('link'); }
         if (e.key === 'Escape') { e.preventDefault(); this.finishEdit(false); }
       });
+      // Pasted text comes in plain.
+      this.doc.addEventListener('paste', e => {
+        if (!e.target.closest('.bp-ed')) return;
+        e.preventDefault();
+        document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
+      });
+      // A click outside a text being edited keeps it.
+      document.addEventListener('mousedown', e => {
+        if (!this.doc.querySelector('.bp-writer .bp-ed')) return;
+        if (e.target.closest('.bp-text-writer, .bp-fmtbar')) return;
+        this.finishEdit(true);
+      }, true);
+      // Selected words in a text being edited get a small bar: bold, italic, link.
+      document.addEventListener('selectionchange', () => this.placeBar());
       // A title or a section commits when it loses the focus.
       this.doc.addEventListener('focusout', e => {
         if (e.target.tagName === 'INPUT' && e.target.closest('.bp-writer')) setTimeout(() => this.finishEdit(true), 0);
@@ -502,8 +563,6 @@
         this.folded.has(key) ? this.folded.delete(key) : this.folded.add(key);
         return this.render();
       }
-      if (t.closest('.bp-wdone')) return this.finishEdit(true);
-      if (t.closest('.bp-wdiscard')) return this.finishEdit(false);
       if (blk && t.closest('.bp-bh')) {
         if (blk.classList.contains('bp-compact')) return this.jumpBlock(blk.dataset.blockId);
         const idx = this.itemIndexOf(blk);
@@ -538,10 +597,77 @@
       }
     }
 
+    // The bar over selected words: bold, italic, link. One per page, kept out
+    // of the document so a render does not take it.
+    bar() {
+      if (this._bar) return this._bar;
+      const b = document.createElement('div');
+      b.className = 'bp-fmtbar';
+      b.innerHTML = '<button type="button" data-f="bold" aria-label="Bold"><b>B</b></button>' +
+        '<button type="button" data-f="italic" aria-label="Italic"><i>I</i></button>' +
+        `<button type="button" data-f="link" aria-label="Link">${ICON.link}</button>` +
+        '<input type="url" placeholder="Paste a link" aria-label="Link">';
+      b.addEventListener('mousedown', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+      b.addEventListener('click', e => { const f = e.target.closest('[data-f]'); if (f) this.fmt(f.dataset.f); });
+      const inp = b.querySelector('input');
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const url = inp.value.trim();
+          this.restoreSel();
+          if (url) document.execCommand('createLink', false, /^[a-z]+:/i.test(url) ? url : 'https://' + url);
+          b.classList.remove('bp-linking');
+          this.placeBar();
+        }
+        if (e.key === 'Escape') { e.preventDefault(); b.classList.remove('bp-linking'); this.restoreSel(); }
+      });
+      this.el.appendChild(b);
+      this._bar = b;
+      return b;
+    }
+    placeBar() {
+      const ed = this.doc.querySelector('.bp-writer .bp-ed');
+      const b = this._bar;
+      if (b && b.classList.contains('bp-linking')) return;
+      const sel = document.getSelection();
+      if (!ed || !sel.rangeCount || sel.isCollapsed || !ed.contains(sel.anchorNode)) { this.hideBar(); return; }
+      const bar = this.bar();
+      const r = sel.getRangeAt(0).getBoundingClientRect(), pr = this.el.getBoundingClientRect();
+      bar.classList.add('bp-show');
+      bar.style.left = Math.max(8, r.left + r.width / 2 - pr.left - bar.offsetWidth / 2) + 'px';
+      bar.style.top = (r.top - pr.top - bar.offsetHeight - 8) + 'px';
+    }
+    hideBar() { if (this._bar) this._bar.classList.remove('bp-show', 'bp-linking'); }
+    restoreSel() {
+      const ed = this.doc.querySelector('.bp-writer .bp-ed');
+      if (!ed || !this._range) return;
+      ed.focus();
+      const sel = document.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(this._range);
+    }
+    fmt(f) {
+      if (f === 'bold' || f === 'italic') { document.execCommand(f); return; }
+      // a link: on a link, take it off; otherwise ask for the address
+      const sel = document.getSelection();
+      if (!sel.rangeCount) return;
+      const a = sel.anchorNode && sel.anchorNode.parentElement && sel.anchorNode.parentElement.closest('a');
+      if (a) { document.execCommand('unlink'); return; }
+      if (sel.isCollapsed) return;
+      this._range = sel.getRangeAt(0).cloneRange();
+      const b = this.bar();
+      b.classList.add('bp-show', 'bp-linking');
+      const inp = b.querySelector('input');
+      inp.value = '';
+      inp.focus();
+    }
+
     finishEdit(save) {
       const w = this.doc.querySelector('.bp-writer');
       if (!w) return;
-      const val = w.querySelector('textarea, input').value;
+      const ed = w.querySelector('.bp-ed');
+      const val = ed ? htmlToMd(ed) : w.querySelector('input').value;
+      this.hideBar();
       if (this.editing === 'title') {
         this.editing = null;
         if (save && val.trim() && val.trim() !== this.state.name) {

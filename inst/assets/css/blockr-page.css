@@ -131,24 +131,27 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 .bp-folded .bp-fold svg { transform: rotate(-90deg); }
 .bp-foldn { font-size: 12px; font-weight: 400; color: var(--bp-subtle); }
 
-.bp-writer {
-  border: 1px solid #93c5fd; border-radius: 8px; background: var(--bp-bg);
-  box-shadow: 0 0 0 3px var(--bp-accent-50); margin: 4px 0 10px;
+/* a text, title or section being edited: in place, on a light tint */
+.bp-writer { border-radius: 6px; background: #f6f7f9; box-shadow: 0 0 0 8px #f6f7f9; margin: 0 0 10px; }
+.bp-ed { outline: 0; min-height: 1.65em; cursor: text; }
+.bp-ed p, .bp-ed li { font-size: 15px; line-height: 1.65; color: var(--bp-text-2); letter-spacing: -0.011em; }
+.bp-ed p { margin: 0 0 8px; }
+.bp-ed > :last-child { margin-bottom: 0; }
+.bp-ed a { color: var(--bp-accent); }
+.bp-fmtbar {
+  position: absolute; z-index: 80; display: none; align-items: center; gap: 2px; padding: 3px;
+  background: #111827; border-radius: 7px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
 }
-.bp-writer textarea {
-  display: block; width: 100%; border: 0; resize: none; outline: 0; font: inherit; font-size: 15px;
-  line-height: 1.6; color: var(--bp-text); padding: 10px 12px; min-height: 80px; border-radius: 8px;
-  background: transparent;
+.bp-fmtbar.bp-show { display: flex; }
+.bp-fmtbar button {
+  border: 0; background: transparent; color: #e5e7eb; width: 26px; height: 24px; border-radius: 5px;
+  font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0;
 }
-.bp-wf {
-  display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px;
-  border-top: 1px solid var(--bp-hover); font-size: 11px; color: var(--bp-subtle);
-}
-.bp-wf button {
-  height: 26px; border-radius: 6px; font: inherit; font-size: 12px; padding: 0 10px; cursor: pointer;
-  border: 1px solid var(--bp-border); background: var(--bp-bg); color: var(--bp-text-2);
-}
-.bp-wf .bp-wdone { background: var(--bp-accent); border-color: var(--bp-accent); color: #fff; }
+.bp-fmtbar button:hover { background: #374151; color: #fff; }
+.bp-fmtbar button svg { width: 13px; height: 13px; }
+.bp-fmtbar input { display: none; border: 0; outline: 0; background: transparent; color: #fff; font: inherit; font-size: 12.5px; width: 200px; padding: 2px 6px; }
+.bp-fmtbar.bp-linking button { display: none; }
+.bp-fmtbar.bp-linking input { display: block; }
 
 /* ---- block cards ------------------------------------------------------------- */
 /* no frame: the name is a caption above the output, the switches show on hover */
@@ -425,7 +428,7 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .blockr-page.bp-read .bp-title h1 { cursor: default; background: none; box-shadow: none; }
 .bp-writer input {
   display: block; width: 100%; border: 0; outline: 0; background: transparent; color: var(--bp-text);
-  font: inherit; padding: 6px 12px; border-radius: 8px;
+  font: inherit; padding: 0; border-radius: 0;
 }
 .bp-title-writer { margin: 0 0 14px; }
 .bp-title-writer input { font-size: 28px; font-weight: 700; letter-spacing: -0.022em; line-height: 1.25; }
