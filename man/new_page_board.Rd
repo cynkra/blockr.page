@@ -49,6 +49,12 @@ it prepares data for the blocks after it and shows as one line that opens
 to its settings. Left out, \code{output} defaults to \code{FALSE} for a transform or
 utility block that feeds another block, \code{TRUE} otherwise; \code{code} defaults to
 \code{FALSE}.
+Text is a block: each text item becomes a prose block
+(\code{\link[blockr.extra:new_prose_block]{blockr.extra::new_prose_block()}}) on the board, so text travels with the
+board and can compute with inline R (\code{`r expr`}). A prose block that
+names a block above it in its code reads from it; one that names none has
+no input.
+
 A section is the page's one level of headings: it shows in the contents
 panel, can be folded, and is what a view is on a dock board. The page's
 title is the board's name (the \code{board_name} option); a first item that is
