@@ -19,6 +19,7 @@
     list: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm-3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>',
     filecode: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3"/><path d="M6.3 8 5 9.5 6.3 11M9.7 8 11 9.5 9.7 11" stroke-linecap="round"/></svg>',
     link: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2.3-2.3a3 3 0 0 0-4.2-4.2L7.6 4.2"/><path d="M9.5 6.5a3 3 0 0 0-4.2 0L3 8.8A3 3 0 0 0 7.2 13l1.2-1.2"/></svg>',
+    close: '<svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
     plus: '<svg viewBox="0 0 10 10"><path d="M5 1.5v7M1.5 5h7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
     grip: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3" r="1.3"/><circle cx="10.5" cy="3" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="13" r="1.3"/><circle cx="10.5" cy="13" r="1.3"/></svg>',
     chev: '<svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>',
@@ -307,14 +308,19 @@
             };
             focus();
           } else {
-            node.classList.add('bp-band-open');
-            this.shown(node);
+            if (node.classList.contains('bp-out-hidden')) {
+              node.classList.add('bp-band-open');
+              this.shown(node);
+            } else {
+              this.openPanel(node.dataset.blockId);
+            }
             setTimeout(() => this.jumpTo(node), 50);
           }
         }
       }
 
       this.buildToc();
+      this.refreshPanel();
       // the cards are on the page before the first order arrives; show it once laid out
       this.el.classList.add('bp-laid-out');
       this.scheduleRail();
@@ -436,6 +442,12 @@
         if (this.read || (e.target !== this.wrap && e.target !== this.doc)) return;
         const last = this.doc.lastElementChild;
         if (last && e.clientY > last.getBoundingClientRect().bottom) this.writeAt(this.state.items.length);
+      });
+      // Escape closes the panel, unless a menu or a field has it.
+      document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || !this.panelFor || this.openMenu || e.defaultPrevented) return;
+        if (e.target.closest && e.target.closest('.ProseMirror, input, textarea, select, .blockr-menu')) return;
+        this.closePanel();
       });
       // Pasted text comes in plain.
       this.doc.addEventListener('paste', e => {
@@ -611,20 +623,15 @@
         if (t.closest('.bp-code-t')) return this.send({ type: 'toggle', index: idx, field: 'code' });
         if (t.closest('.bp-eye-t')) return this.send({ type: 'toggle', index: idx, field: 'output' });
         if (t.closest('.bp-more')) return this.blockMoreMenu(idx, blk.dataset.blockId, t.closest('.bp-more'));
-        if (t.closest('.bp-ctl-t')) {
-          if (blk.classList.contains('bp-step')) this.openSteps.add(blk.dataset.blockId);
+        // a chart's settings are part of its chart: they open where it is
+        if (t.closest('.bp-ctl-t') && blk.classList.contains('bp-out-hidden')) {
           blk.classList.toggle('bp-band-open');
-          blk.classList.toggle('bp-open', blk.classList.contains('bp-step') && this.openSteps.has(blk.dataset.blockId));
           this.shown(blk);
           return this.scheduleRail();
         }
-        // a step opens and closes from anywhere on its line
-        if (blk.classList.contains('bp-step') && !t.closest('.bp-gh')) {
-          const id = blk.dataset.blockId;
-          this.openSteps.has(id) ? this.openSteps.delete(id) : this.openSteps.add(id);
-          blk.classList.toggle('bp-open', this.openSteps.has(id));
-          this.shown(blk);
-          return this.scheduleRail();
+        // Controls, the block's name, a step's line: its settings, beside the text
+        if (t.closest('.bp-ctl-t') || !t.closest('.bp-gh, .bp-handle')) {
+          return this.togglePanel(blk.dataset.blockId);
         }
         return;
       }
@@ -1037,6 +1044,90 @@
       const cb = this._valuesCb;
       this._valuesCb = null;
       cb(msg.values || []);
+    }
+
+    /* ---- a block's settings, beside the text ------------------------------------- */
+    // The panel takes the place of the contents. The block's settings (its
+    // band, live Shiny inputs) move into it and back; the page keeps its
+    // shape while you change them, and the output changes in place.
+    panel() {
+      if (this._panel) return this._panel;
+      const p = document.createElement('aside');
+      p.className = 'bp-panel';
+      p.addEventListener('click', e => {
+        if (e.target.closest('.bp-ip-x')) return this.closePanel();
+        const sw = e.target.closest('[data-switch]');
+        if (sw && this.panelFor) {
+          const idx = this.state.items.findIndex(it => it.block === this.panelFor);
+          if (idx >= 0) this.send({ type: 'toggle', index: idx, field: sw.dataset.switch });
+        }
+        const from = e.target.closest('[data-from]');
+        if (from) this.jumpBlock(from.dataset.from);
+      });
+      this.el.querySelector('.bp-body').appendChild(p);
+      this._panel = p;
+      return p;
+    }
+    togglePanel(id) { this.panelFor === id ? this.closePanel() : this.openPanel(id); }
+    openPanel(id) {
+      if (this.read) return;
+      this.closePanel();
+      const node = this.blockNode(id);
+      if (!node) return;
+      const p = this.panel();
+      const mark = node.querySelector('.bp-bh > :first-child');
+      p.innerHTML = '<div class="bp-ip-head">' + (mark ? mark.outerHTML : '') +
+        `<span class="bp-ip-name">${esc(this.blockName(id))}</span>` +
+        `<button type="button" class="bp-ip-x bp-hb" aria-label="Close">${ICON.close}</button></div>` +
+        '<div class="bp-ip-body"></div><div class="bp-ip-doc"></div>';
+      const band = node.querySelector(':scope > .bp-band');
+      if (band && !node.classList.contains('bp-out-hidden')) {
+        p.querySelector('.bp-ip-body').appendChild(band);
+        this._band = { node: node, band: band };
+        this.shown(band);
+      }
+      this.panelFor = id;
+      node.classList.add('bp-selected');
+      this.el.classList.add('bp-panel-open');
+      this.refreshPanel();
+      this.scheduleRail();
+    }
+    closePanel() {
+      if (!this.panelFor) return;
+      const b = this._band;
+      if (b && b.node.isConnected) {
+        b.node.insertBefore(b.band, b.node.querySelector(':scope > .bp-codeview'));
+        this.shown(b.node);
+      }
+      this._band = null;
+      const node = this.blockNode(this.panelFor);
+      if (node) node.classList.remove('bp-selected');
+      this.panelFor = null;
+      this.el.classList.remove('bp-panel-open');
+      this.scheduleRail();
+    }
+    // the report's switches and what the block reads from, as the state has them
+    refreshPanel() {
+      if (!this.panelFor) return;
+      const id = this.panelFor;
+      const it = this.state.items.find(x => x.block === id);
+      if (!it || !this.blockNode(id)) {
+        // the block went, its settings with it
+        if (this._band) this._band.band.remove();
+        this._band = null;
+        this.panelFor = null;
+        this.el.classList.remove('bp-panel-open');
+        return;
+      }
+      const sw = (f, label, on) => `<button type="button" class="bp-ip-sw" data-switch="${f}" aria-pressed="${on}">` +
+        `<span>${label}</span><span class="bp-sw${on ? ' bp-on' : ''}"></span></button>`;
+      const from = this.parents(id);
+      this._panel.querySelector('.bp-ip-doc').innerHTML =
+        '<div class="bp-ip-lab">In the document</div>' +
+        sw('output', 'Output', it.output !== false) + sw('code', 'Code', it.code === true) +
+        (from.length ? '<div class="bp-ip-lab">Reads from</div>' +
+          from.map(f => `<button type="button" class="bp-ip-from" data-from="${esc(f)}">${esc(this.blockName(f))}</button>`).join('') : '');
+      this._panel.querySelector('.bp-ip-name').textContent = this.blockName(id);
     }
 
     // A table cell: "Use in text" puts it in the text as inline R, so it
