@@ -103,11 +103,7 @@ page_callback <- function(board, update, session, ...) {
         act$type,
 
         add_block = {
-          blk <- if (identical(act$registry, "new_prose_block")) {
-            blockr.extra::new_prose_block(block_name = "Text")
-          } else {
-            blockr.core::create_block(act$registry)
-          }
+          blk <- page_new_block(act$registry)
           bid <- blockr.core::rand_names(blockr.core::board_block_ids(board$board))
           upd <- list(
             blocks = list(add = blockr.core::as_blocks(stats::setNames(list(blk), bid)))
@@ -121,6 +117,64 @@ page_callback <- function(board, update, session, ...) {
             }
           }
           pending[[bid]] <- as.integer(act$at)
+          fresh(bid)
+          update(upd)
+        },
+
+        # "/" on an empty line of a text: the text splits there, the new
+        # block (or a section) goes between the halves, and an empty half
+        # goes. `before` and `after` are the halves as markdown.
+        insert_in_text = {
+          i <- as.integer(act$index) + 1L
+          if (i > n || !is_block_item(cur[[i]])) return()
+          tid <- cur[[i]]$block
+          srv <- board$blocks[[tid]]$server
+          before <- if (is.null(act$before)) "" else act$before
+          after <- if (is.null(act$after)) "" else act$after
+          keep <- nzchar(trimws(before))
+          if (keep) srv$state$text(before)
+          taken <- blockr.core::board_block_ids(board$board)
+          rest <- NULL
+          if (nzchar(trimws(after))) {
+            rid <- blockr.core::rand_names(taken)
+            taken <- c(taken, rid)
+            rest <- stats::setNames(
+              list(blockr.extra::new_prose_block(after, block_name = "Text")),
+              rid
+            )
+          }
+          # items before the new one: up to the text, or in its place
+          at <- if (keep) i else i - 1L
+          if (isTRUE(act$section)) {
+            # a section is an item only; the rest of the text follows it
+            if (!keep) cur <- cur[-i]
+            cur <- append(cur, list(list(section = "")), after = at)
+            items(cur)
+            upd <- list()
+            if (length(rest)) {
+              pending[[names(rest)]] <- at + 1L
+              upd$blocks$add <- blockr.core::as_blocks(rest)
+            }
+            if (!keep) upd$blocks$rm <- tid
+            if (length(upd)) update(upd)
+            return()
+          }
+          blk <- page_new_block(act$registry)
+          bid <- blockr.core::rand_names(taken)
+          upd <- list(blocks = list(
+            add = blockr.core::as_blocks(c(stats::setNames(list(blk), bid), rest))
+          ))
+          if (!keep) upd$blocks$rm <- tid
+          if (length(act$from) && nzchar(act$from)) {
+            inp <- free_input(blk, bid, link_frame(board$board, input = TRUE))
+            if (!is.na(inp)) {
+              upd$links <- list(
+                add = blockr.core::links(from = act$from, to = bid, input = inp)
+              )
+            }
+          }
+          pending[[bid]] <- at
+          if (length(rest)) pending[[names(rest)]] <- at + 1L
           fresh(bid)
           update(upd)
         },
@@ -389,6 +443,15 @@ free_input <- function(blk, id, links) {
     free <- c(free, "")
   }
   if (length(free)) free[1L] else NA_character_
+}
+
+# A block for the page's menus: a text is a prose block named "Text".
+page_new_block <- function(registry) {
+  if (identical(registry, "new_prose_block")) {
+    blockr.extra::new_prose_block(block_name = "Text")
+  } else {
+    blockr.core::create_block(registry)
+  }
 }
 
 page_state <- function(items, board) {

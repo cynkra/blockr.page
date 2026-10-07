@@ -327,7 +327,7 @@
       d.dataset.at = at;
       d.innerHTML = last
         ? `<button type="button" class="bp-insbtn">${ICON.plus}<span class="bp-insl">Add block</span></button>`
-        : `<span class="bp-insline"></span><button type="button" class="bp-insbtn bp-hb bp-hb-s" aria-label="Insert">${ICON.plus}</button>`;
+        : '<span class="bp-insline"></span>';
       return d;
     }
 
@@ -418,10 +418,12 @@
       // The texts read as one document: at a text's edge the arrow keys go
       // on to the next text, Backspace and Delete join two texts that touch.
       this.doc.addEventListener('prose-edge', e => this.onEdge(e));
+      this.doc.addEventListener('prose-slash', e => this.onSlash(e));
       // A text left empty goes.
       this.doc.addEventListener('focusout', e => {
         const host = e.target.closest && e.target.closest('.bp-blk.bp-prose');
         if (host && !this.read) setTimeout(() => this.dropIfEmpty(host), 0);
+        if (host) setTimeout(() => this.placePlus(), 0);
       });
       // Below the last item is where the next sentence goes.
       this.wrap.addEventListener('click', e => {
@@ -442,7 +444,7 @@
         this.finishEdit(true);
       }, true);
       // Selected words in a text being edited get a small bar: bold, italic, link.
-      document.addEventListener('selectionchange', () => this.placeBar());
+      document.addEventListener('selectionchange', () => { this.placeBar(); this.placePlus(); });
       // A title or a section commits when it loses the focus.
       this.doc.addEventListener('focusout', e => {
         if (e.target.tagName === 'INPUT' && e.target.closest('.bp-writer')) setTimeout(() => this.finishEdit(true), 0);
@@ -658,7 +660,7 @@
       this.send({ type: 'add_block', at: at, registry: 'new_prose_block', from: '' });
     }
     dropIfEmpty(host) {
-      if (!host.isConnected || host.contains(document.activeElement)) return;
+      if (!host.isConnected || host.contains(document.activeElement) || this.slashing === host) return;
       const p = host.querySelector('.blockr-prose');
       const inst = p && p.blockrProse;
       if (!inst || inst.field || !inst.isEmpty()) return;
@@ -815,18 +817,22 @@
     // A pick closes the menu; the next one opens after that has settled.
     then(fn) { return () => setTimeout(fn, 0); }
 
-    // The + of a gap: one list. Text and Section on top, then the blocks that
-    // read from the block above, first of them ready for Enter, then the
-    // blocks without an input; typing searches all of them. A block from
-    // another input is the last row.
-    insertMenu(at, anchor) {
+    // The add menu: one list. Text and Section on top, then the blocks that
+    // read from the nearest block above, first of them ready for Enter, then
+    // the blocks without an input; typing searches all of them. A block from
+    // another input is the last row. `opt.add(registry, from)` and
+    // `opt.section()` replace what a pick does; `opt.inText` leaves out Text,
+    // for the menu that "/" opens in a text; `opt.onClose` runs when the menu
+    // and any menu it leads to are gone.
+    insertMenu(at, anchor, opt = {}) {
       const items = this.state.items;
-      const above = items.slice(0, at).filter(it => it.block != null).map(it => it.block);
-      const last = this.blockAbove(at);
+      const above = items.slice(0, at).filter(it => it.block != null && !this.isProse(it)).map(it => it.block);
+      const last = above.length ? above[above.length - 1] : null;
       const ins = anchor.closest('.bp-ins');
       const mark = () => ins && ins.classList.add('bp-open');
-      const unmark = () => ins && ins.classList.remove('bp-open');
-      const add = (r, from) => () => this.send({ type: 'add_block', at: at, registry: r.id, from: from || '' });
+      const unmark = () => { if (ins) ins.classList.remove('bp-open'); if (opt.onClose) opt.onClose(); };
+      const addFn = opt.add || ((id, from) => this.send({ type: 'add_block', at: at, registry: id, from: from || '' }));
+      const add = (r, from) => () => addFn(r.id, from);
       const blockRows = (list, from) => {
         const out = [];
         let cat = null;
@@ -837,12 +843,13 @@
         });
         return out;
       };
-      const rows = [
-        { label: 'Text', meta: 'a paragraph', icon: ICON.text,
-          onSelect: () => this.send({ type: 'add_block', at: at, registry: 'new_prose_block', from: '' }) },
-        { label: 'Section', meta: 'a heading', icon: ICON.heading,
-          onSelect: () => { this.pendingEdit = at; this.send({ type: 'add_section', at: at, text: '' }); } }
-      ];
+      const rows = [];
+      if (!opt.inText) {
+        rows.push({ label: 'Text', meta: 'a paragraph', icon: ICON.text,
+          onSelect: () => addFn('new_prose_block', '') });
+      }
+      rows.push({ label: 'Section', meta: 'a heading', icon: ICON.heading,
+        onSelect: opt.section || (() => { this.pendingEdit = at; this.send({ type: 'add_section', at: at, text: '' }); }) });
       if (last) rows.push({ divider: true }, ...blockRows(this.registry.filter(r => r.append), last));
       const free = this.registry.filter(r => !r.append);
       if (free.length) {
@@ -852,7 +859,7 @@
       }
       if (above.length > 1) {
         rows.push({ divider: true }, { label: 'From another block…', icon: ICON.branch,
-          onSelect: this.then(() => { mark(); this.fromMenu(anchor, at, above, unmark); }) });
+          onSelect: this.then(() => { mark(); this.fromMenu(anchor, at, above, unmark, addFn); }) });
       }
       mark();
       this.menu(anchor, {
@@ -863,17 +870,17 @@
       // the first block that reads from the one above is the row Enter takes
       const h = this.openMenu;
       if (last && h && h.el) {
-        const first = h.el.querySelectorAll('.blockr-menu__item')[2];
-        if (first) first.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+        const mk = h.el.querySelector('.blockr-menu__item .blockr-block-mark');
+        if (mk) mk.closest('.blockr-menu__item').dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
       }
     }
 
-    fromMenu(anchor, at, above, onClose) {
+    fromMenu(anchor, at, above, onClose, addFn) {
       this.menu(anchor, {
         caption: 'Read from',
         items: above.slice().reverse().map(id => ({
           label: this.blockName(id),
-          onSelect: this.then(() => this.blockMenu(anchor, at, id, onClose))
+          onSelect: this.then(() => this.blockMenu(anchor, at, id, onClose, addFn))
         })),
         onClose: () => setTimeout(() => { if (!this.openMenu && onClose) onClose(); }, 0)
       });
@@ -881,7 +888,8 @@
 
     // Every registered block by category; appending offers only the blocks
     // that can take an input, as the dock does.
-    blockMenu(anchor, at, from, onClose) {
+    blockMenu(anchor, at, from, onClose, addFn) {
+      const send = addFn || ((id, f) => this.send({ type: 'add_block', at: at, registry: id, from: f || '' }));
       const rows = [];
       let cat = null;
       this.registry.filter(r => !from || r.append).forEach(r => {
@@ -889,7 +897,7 @@
         rows.push({
           label: r.name, badge: r.package, keywords: r.id,
           mark: { icon: r.icon, category: r.category },
-          onSelect: () => this.send({ type: 'add_block', at: at, registry: r.id, from: from || '' })
+          onSelect: () => send(r.id, from || '')
         });
       });
       this.menu(anchor, {
@@ -897,6 +905,100 @@
         filter: 'Search blocks', minWidth: 300, items: rows,
         onClose: () => { if (onClose) onClose(); }
       });
+    }
+
+    /* ---- "/" in a text, and the + beside an empty line ------------------------------ */
+    onSlash(e) {
+      if (this.read) return;
+      const host = e.target.closest('.bp-blk.bp-prose');
+      const i = host ? this.itemIndexOf(host) : -1;
+      if (i < 0) return;
+      e.preventDefault();
+      this.slashMenu(host, i, e.detail, true);
+    }
+
+    // The add menu at the cursor's line in text item i. A pick splits the
+    // text there and puts the new block between the halves. Closed without a
+    // pick, what was typed goes into the text: "/" and the search.
+    slashMenu(host, i, rect, typed) {
+      const prose = host.querySelector('.blockr-prose').blockrProse;
+      if (!prose) return;
+      const pr = this.el.getBoundingClientRect();
+      const a = document.createElement('span');
+      a.className = 'bp-caret-anchor';
+      a.style.left = (rect.left - pr.left) + 'px';
+      a.style.top = (rect.top - pr.top) + 'px';
+      a.style.height = Math.max(16, rect.bottom - rect.top) + 'px';
+      this.el.appendChild(a);
+      this.slashing = host;
+      this.hidePlus();
+      let picked = false, query = '', erased = false;
+      const go = payload => {
+        picked = true;
+        const sp = prose.splitHere() || { before: prose.text(), after: '' };
+        if (payload.section) this.pendingEdit = sp.before.trim() ? i + 1 : i;
+        // the line the menu came from goes from the text at once
+        if (sp.before.trim()) prose.dropLine();
+        this.send(Object.assign({ type: 'insert_in_text', index: i, before: sp.before, after: sp.after }, payload));
+      };
+      this.insertMenu(i + 1, a, {
+        inText: true,
+        add: (id, from) => go({ registry: id, from: from || '' }),
+        section: () => go({ section: true }),
+        onClose: () => {
+          a.remove();
+          this.slashing = null;
+          if (picked) return;
+          if (typed && !erased) prose.typeHere('/' + query);
+          else prose.focusAt('here');
+        }
+      });
+      const f = this.openMenu && this.openMenu.el && this.openMenu.el.querySelector('.blockr-menu__filter-input');
+      if (f) {
+        f.addEventListener('input', () => { query = f.value; });
+        // Backspace on an empty search takes the "/" back
+        f.addEventListener('keydown', ev => {
+          if (ev.key === 'Backspace' && !f.value) { ev.preventDefault(); erased = true; this.closeMenu(); }
+        });
+      }
+    }
+
+    plusBtn() {
+      if (this._plus) return this._plus;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bp-plus bp-hb';
+      b.setAttribute('aria-label', 'Add');
+      b.innerHTML = ICON.plus;
+      b.addEventListener('mousedown', e => e.preventDefault());
+      b.addEventListener('click', () => {
+        const p = this._plusFor;
+        const host = p && p.closest('.bp-blk.bp-prose');
+        const i = host ? this.itemIndexOf(host) : -1;
+        if (i < 0) return;
+        const r = p.getBoundingClientRect();
+        this.slashMenu(host, i, { left: r.left, top: r.top, bottom: r.bottom }, false);
+      });
+      this.wrap.appendChild(b);
+      this._plus = b;
+      return b;
+    }
+    hidePlus() { if (this._plus) this._plus.classList.remove('bp-show'); this._plusFor = null; }
+    // The + shows beside the empty line the cursor is on.
+    placePlus() {
+      if (this.read || this.slashing) return this.hidePlus();
+      const sel = document.getSelection();
+      const n = sel.rangeCount && sel.isCollapsed ? sel.anchorNode : null;
+      const el = n && (n.nodeType === 1 ? n : n.parentElement);
+      const pm = el && el.closest('.bp-blk.bp-prose .ProseMirror');
+      const p = pm && el.closest('p');
+      if (!p || p.parentElement !== pm || p.textContent.trim() || p.querySelector('.blockr-r-chip')) return this.hidePlus();
+      const b = this.plusBtn();
+      const r = p.getBoundingClientRect(), wr = this.wrap.getBoundingClientRect();
+      b.style.left = (r.left - wr.left - 30) + 'px';
+      b.style.top = (r.top - wr.top + r.height / 2 - 11) + 'px';
+      b.classList.add('bp-show');
+      this._plusFor = p;
     }
 
     nameMenu(anchor) {
@@ -1031,7 +1133,7 @@
         wire.remove(); say.remove(); clear(); this.hl(null);
         if (!moved) {
           const ins = this.doc.querySelector(`:scope > .bp-ins[data-at="${srcIdx + 1}"]`);
-          if (ins) this.blockMenu(ins.querySelector('.bp-insbtn'), srcIdx + 1, id);
+          if (ins) this.blockMenu(ins.querySelector('.bp-insline'), srcIdx + 1, id);
           return;
         }
         if (!target) return;

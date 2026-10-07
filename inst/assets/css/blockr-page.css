@@ -237,6 +237,11 @@ svg .bp-dot-step { cursor: grab; }
 .bp-insbtn { position: absolute; left: -27px; top: -2px; opacity: 0; }
 .bp-ins.bp-hover .bp-insbtn, .bp-ins.bp-open .bp-insbtn, .bp-insbtn:focus-visible { opacity: 1; }
 .bp-ins.bp-open .bp-insbtn { background: #e5e7eb; color: var(--bp-text); }
+/* "/" and the + beside an empty line open the add menu at the cursor */
+.bp-caret-anchor { position: absolute; width: 1px; pointer-events: none; }
+.bp-plus { position: absolute; z-index: 4; opacity: 0; pointer-events: none; transition: opacity .12s; }
+.bp-plus.bp-show { opacity: 1; pointer-events: auto; }
+.blockr-page.bp-read .bp-plus { display: none; }
 /* the end of the document always shows its +, as words */
 .bp-ins-last { height: auto; margin-top: 18px; }
 .bp-ins-last .bp-insbtn {
