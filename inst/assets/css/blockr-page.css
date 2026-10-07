@@ -129,14 +129,9 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 .bp-text h1, .bp-text h2, .bp-text h3 { display: flex; align-items: center; gap: 6px; }
 .bp-text > :last-child { margin-bottom: 4px; }
 .bp-placeholder { color: var(--bp-subtle) !important; font-style: italic; }
-.bp-fold {
-  width: 22px; height: 22px; border: 0; background: transparent; color: var(--bp-subtle);
-  border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer; opacity: 0; padding: 0;
-}
+.bp-fold { opacity: 0; }
 .bp-text:hover .bp-fold, .bp-folded .bp-fold { opacity: 1; }
-.bp-fold:hover { background: var(--bp-hover); color: var(--bp-muted); }
-.bp-fold svg { width: 14px; height: 14px; transition: transform .12s; }
+.bp-fold svg { transition: transform .12s; }
 .bp-folded .bp-fold svg { transform: rotate(-90deg); }
 .bp-foldn { font-size: 12px; font-weight: 400; color: var(--bp-subtle); }
 
@@ -175,16 +170,9 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
   font-size: 12.5px; font-weight: 500; color: var(--bp-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.bp-gh {
-  min-width: 28px; height: 28px; padding: 6px 7px; border: none; border-radius: 8px;
-  background: transparent; color: #b8bec7; display: inline-flex; align-items: center;
-  justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s;
-}
+.bp-gh { opacity: 0; }
 .bp-blk:hover .bp-gh, .bp-gh:focus-visible { opacity: 1; }
 @media (hover: none) { .bp-gh { opacity: 1; } }
-.bp-gh:hover { background: var(--bp-hover); color: var(--bp-muted); }
-.bp-gh svg { width: 14px; height: 14px; }
-.bp-blk.bp-band-open .bp-gear { color: #4b5563; }
 .bp-chev svg { transition: transform .12s; }
 .bp-blk.bp-collapsed .bp-chev svg, .bp-blk.bp-compact .bp-chev svg { transform: rotate(-90deg); }
 
@@ -206,7 +194,6 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 
 /* ---- the report's two switches ---------------------------------------------------- */
 .bp-eye-t .bp-i-eyeoff { display: none; }
-.bp-blk:not(.bp-step) .bp-eye-t, .bp-blk.bp-code-on .bp-code-t { color: #4b5563; }
 .bp-blk.bp-step .bp-eye-t .bp-i-eye { display: none; }
 .bp-blk.bp-step .bp-eye-t .bp-i-eyeoff { display: inline; }
 .bp-codeview {
@@ -243,35 +230,24 @@ svg .bp-dot-step { cursor: grab; }
 .bp-blk.bp-compact .bp-gear, .bp-blk.bp-compact .bp-handle { display: none; }
 
 /* ---- grip handle and insert lines -------------------------------------------- */
-.bp-handle {
-  position: absolute; left: -30px; top: 7px; width: 20px; height: 22px; border-radius: 5px;
-  border: 0; background: transparent; color: #d1d5db; opacity: 0; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; padding: 0;
-}
-.bp-handle svg { width: 12px; height: 12px; }
-.bp-text > .bp-handle { top: 2px; }
+.bp-handle { position: absolute; left: -30px; top: 9px; opacity: 0; }
+.bp-text > .bp-handle { top: 4px; }
 .bp-blk:hover .bp-handle, .bp-text:hover > .bp-handle { opacity: 1; }
-.bp-handle:hover { background: var(--bp-hover); color: var(--bp-muted); }
 
 .bp-ins { position: relative; height: 14px; }
 .bp-insline { position: absolute; left: 0; right: 0; top: 6px; height: 2px; border-radius: 1px; }
-/* a gap: a grey + in the gutter while the pointer is on it, no line */
-.bp-insbtn {
-  position: absolute; left: -26px; top: -2px; width: 18px; height: 18px; border-radius: 4px;
-  border: 0; background: transparent; color: var(--bp-subtle);
-  display: flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer;
-  font-size: 16px; font-weight: 300; line-height: 1; padding: 0;
-}
+/* a gap: a hover button in the gutter while the pointer is on it, no line */
+.bp-insbtn { position: absolute; left: -27px; top: -2px; opacity: 0; }
 .bp-ins:hover .bp-insbtn, .bp-ins.bp-open .bp-insbtn { opacity: 1; }
-.bp-insbtn:hover, .bp-ins.bp-open .bp-insbtn { color: var(--bp-text); }
-.bp-insl { display: none; }
-/* the end of the document always shows its + */
+.bp-ins.bp-open .bp-insbtn { background: #e5e7eb; color: var(--bp-text); }
+/* the end of the document always shows its +, as words */
 .bp-ins-last { height: auto; margin-top: 18px; }
-.bp-ins-last .bp-insline { display: none; }
 .bp-ins-last .bp-insbtn {
-  position: static; opacity: 1; width: auto; height: 24px; font-size: 13px; font-weight: 400; gap: 6px;
+  position: static; opacity: 1; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0;
+  border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--bp-subtle); cursor: pointer;
 }
-.bp-ins-last .bp-insl { display: inline; }
+.bp-ins-last .bp-insbtn svg { width: 9px; height: 9px; }
+.bp-ins-last .bp-insbtn:hover { color: var(--bp-text); }
 
 .bp-toast {
   position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); opacity: 0;
@@ -365,16 +341,12 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
   .bp-out { padding: 2px 0 8px; }
 }
 
-/* ---- the graph's switch: a word, shown while the pointer is over the gutter ---- */
+/* ---- the graph's switch: a hover button at the top of the gutter --------------- */
 .bp-gutzone { position: absolute; left: 0; top: 0; bottom: 0; width: var(--bp-gutter, 70px); }
 .blockr-page.bp-no-gutter .bp-gutzone { width: 40px; }
-.bp-gutlabel {
-  position: sticky; top: 10px; margin-left: 8px; border: 0; background: var(--bp-bg); padding: 1px 4px; border-radius: 4px;
-  font: inherit; font-size: 11.5px; color: var(--bp-muted); white-space: nowrap; cursor: pointer; opacity: 0; transition: opacity .12s;
-}
-.bp-gutzone:hover .bp-gutlabel { opacity: 1; }
-.bp-gutlabel:hover { color: var(--bp-text); text-decoration: underline; }
-@media (hover: none) { .bp-gutlabel { opacity: .8; } }
+.bp-gutlabel { position: sticky; top: 10px; margin-left: 5px; z-index: 2; opacity: 0; }
+.bp-gutzone:hover .bp-gutlabel, .blockr-page.bp-no-gutter .bp-gutlabel { opacity: 1; }
+@media (hover: none) { .bp-gutlabel { opacity: 1; } }
 .blockr-page.bp-read .bp-gutzone { display: none; }
 
 /* ---- the right column's title is its switch ------------------------------------ */
@@ -391,8 +363,7 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-srchead .bp-coltitle { margin-bottom: 0; }
 
 /* ---- header B: Controls, Code, Output, "..." ------------------------------------- */
-.bp-blk.bp-band-open .bp-ctl-t { color: #4b5563; }
-.bp-blk.bp-step:not(.bp-open) .bp-ctl-t { color: #b8bec7; }
+
 
 /* ---- Read: the document as its readers get it ------------------------------------- */
 .blockr-page.bp-read svg.bp-rail,
@@ -422,3 +393,27 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
    table display does the same on .blockr-td-numeric. */
 .blockr-page .gt_table td.gt_center,
 .blockr-page .gt_table td.gt_right { font-variant-numeric: tabular-nums; }
+
+/* ---- hover buttons ------------------------------------------------------------------------
+   One control for everything the page offers but does not show while you
+   read: a grey disc with a grey glyph, faded in while the pointer is in its
+   zone (a gap, a block, a heading, the gutter). 22px in a block header, 18px
+   (bp-hb-s) in the gutter. A switch that is on (a panel open, the graph off, a
+   section folded) gets the darker disc; one that hides something stays
+   visible at rest. */
+.bp-hb {
+  --bp-hb: 22px;
+  width: var(--bp-hb); height: var(--bp-hb); flex: 0 0 var(--bp-hb); border-radius: 50%; border: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #f1f2f4; color: var(--bp-subtle); cursor: pointer;
+  transition: opacity .15s, background .12s, color .12s;
+}
+.bp-hb-s { --bp-hb: 18px; }
+.bp-hb svg { width: calc(var(--bp-hb) * .5); height: calc(var(--bp-hb) * .5); display: block; }
+.bp-hb:hover { background: #e5e7eb; color: #374151; }
+.bp-hb:active { background: #d9dce1; color: var(--bp-text); }
+.bp-hb:focus-visible { outline: 2px solid #c4c9d0; outline-offset: 2px; }
+.bp-blk.bp-band-open .bp-ctl-t, .bp-blk.bp-code-on .bp-code-t,
+.blockr-page.bp-no-gutter .bp-gutlabel, .bp-folded .bp-fold { background: #e5e7eb; color: var(--bp-text); }
+.bp-bh { gap: 6px; }
+.bp-bh .bp-bname { margin-right: 4px; }

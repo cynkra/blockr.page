@@ -18,6 +18,7 @@
     chevron: '<svg class="bp-chevron" viewBox="0 0 12 12" width="12" height="12"><polyline points="3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     list: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm-3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>',
     filecode: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3"/><path d="M6.3 8 5 9.5 6.3 11M9.7 8 11 9.5 9.7 11" stroke-linecap="round"/></svg>',
+    plus: '<svg viewBox="0 0 10 10"><path d="M5 1.5v7M1.5 5h7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
     grip: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3" r="1.3"/><circle cx="10.5" cy="3" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="13" r="1.3"/><circle cx="10.5" cy="13" r="1.3"/></svg>',
     chev: '<svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>',
     plusb: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm6 3.5a.5.5 0 0 0-.5.5v1.5H6a.5.5 0 0 0 0 1h1.5V10a.5.5 0 0 0 1 0V8.5H10a.5.5 0 0 0 0-1H8.5V6a.5.5 0 0 0-.5-.5z"/></svg>',
@@ -128,7 +129,7 @@
       const v = localStorage.getItem(this.gutterKey());
       this.gutterOff = v ? v === 'off' : this.narrow;
       this.el.classList.toggle('bp-no-gutter', this.gutterOff);
-      this.el.querySelector('.bp-gutlabel').textContent = this.gutterOff ? 'Show graph' : 'Hide graph';
+      this.el.querySelector('.bp-gutlabel').setAttribute('aria-label', this.gutterOff ? 'Show graph' : 'Hide graph');
     }
 
     // Source beside the page: wide views only, two columns do not fit a phone.
@@ -255,7 +256,9 @@
       const d = document.createElement('div');
       d.className = 'bp-ins bp-gen' + (last ? ' bp-ins-last' : '');
       d.dataset.at = at;
-      d.innerHTML = '<span class="bp-insline"></span><button type="button" class="bp-insbtn" title="Insert">+<span class="bp-insl">Add block</span></button>';
+      d.innerHTML = last
+        ? `<button type="button" class="bp-insbtn">${ICON.plus}<span class="bp-insl">Add block</span></button>`
+        : `<span class="bp-insline"></span><button type="button" class="bp-insbtn bp-hb bp-hb-s" aria-label="Insert">${ICON.plus}</button>`;
       return d;
     }
 
@@ -270,7 +273,7 @@
         return d;
       }
       d.className = 'bp-text bp-gen' + (lvl ? ' bp-heading' : '') + (it.text.trim() ? '' : ' bp-text-empty');
-      d.innerHTML = `<button type="button" class="bp-handle" title="Move or remove">${ICON.grip}</button>` +
+      d.innerHTML = `<button type="button" class="bp-handle bp-hb bp-hb-s" aria-label="Move or remove">${ICON.grip}</button>` +
         (it.html || '<p class="bp-placeholder">Empty text</p>');
       if (lvl) {
         const h = d.querySelector('h1,h2,h3,h4,h5,h6');
@@ -278,7 +281,7 @@
           const folded = this.folded.has(headingText(it.text));
           d.classList.toggle('bp-folded', folded);
           h.insertAdjacentHTML('beforeend',
-            `<button type="button" class="bp-fold" title="Fold section">${ICON.chev}</button>` +
+            `<button type="button" class="bp-fold bp-hb bp-hb-s" aria-label="Fold section">${ICON.chev}</button>` +
             (folded ? '<span class="bp-foldn">folded</span>' : ''));
         }
       }

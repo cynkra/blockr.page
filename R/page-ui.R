@@ -51,11 +51,15 @@ board_ui.page_board <- function(id, x, plugins = blockr.core::board_plugins(x),
           class = "bp-scroll",
           htmltools::div(
             class = "bp-docwrap",
-            # The graph's switch: a word that appears while the pointer is
-            # over the gutter, and nothing at rest.
+            # The graph's switch: a hover button at the top of the gutter,
+            # shown while the pointer is over the gutter, and at rest while
+            # the graph is off.
             htmltools::div(
               class = "bp-gutzone",
-              htmltools::tags$button(class = "bp-gutlabel", type = "button", "Hide graph")
+              htmltools::tags$button(
+                class = "bp-gutlabel bp-hb bp-hb-s", type = "button",
+                `aria-label` = "Hide graph", htmltools::HTML(icon_svg("graph"))
+              )
             ),
             htmltools::tags$svg(class = "bp-rail"),
             htmltools::div(
@@ -123,20 +127,20 @@ page_block_card <- function(blk, blk_id, ns) {
       htmltools::span(class = "bp-bsp"),
       if (has_controls(blk)) {
         htmltools::tags$button(
-          class = "bp-gh bp-ctl-t", type = "button", title = "Controls",
+          class = "bp-gh bp-hb bp-ctl-t", type = "button", `aria-label` = "Controls",
           htmltools::HTML(icon_svg("sliders"))
         )
       },
       htmltools::tags$button(
-        class = "bp-gh bp-code-t", type = "button", title = "Code in the document",
+        class = "bp-gh bp-hb bp-code-t", type = "button", `aria-label` = "Code in the document",
         htmltools::HTML(icon_svg("code"))
       ),
       htmltools::tags$button(
-        class = "bp-gh bp-eye-t", type = "button", title = "Output in the document",
+        class = "bp-gh bp-hb bp-eye-t", type = "button", `aria-label` = "Output in the document",
         htmltools::HTML(icon_svg("eye")), htmltools::HTML(icon_svg("eyeoff"))
       ),
       htmltools::tags$button(
-        class = "bp-gh bp-more", type = "button", title = "More actions",
+        class = "bp-gh bp-hb bp-more", type = "button", `aria-label` = "More actions",
         htmltools::HTML(icon_svg("dots"))
       )
     ),
@@ -301,7 +305,7 @@ icon_svg <- function(name) {
     eyeoff = '<svg class="bp-i-eyeoff" viewBox="0 0 16 16" fill="currentColor"><path d="m10.79 12.912-1.614-1.615a3.5 3.5 0 0 1-4.474-4.474l-2.06-2.06C.938 6.278 0 8 0 8s3 5.5 8 5.5a7 7 0 0 0 2.79-.588M5.21 3.088A7 7 0 0 1 8 2.5c5 0 8 5.5 8 5.5s-.939 1.721-2.641 3.238l-2.062-2.062a3.5 3.5 0 0 0-4.474-4.474z"/><path d="M5.525 7.646a2.5 2.5 0 0 0 2.829 2.829zm4.95.708-2.829-2.83a2.5 2.5 0 0 1 2.829 2.829zm3.171 6-12-12 .708-.708 12 12z"/></svg>',
     mark = '<svg viewBox="0 0 224 224" width="20" height="20"><g fill="currentColor"><rect x="0" y="0" width="64" height="64" rx="7"/><rect x="80" y="0" width="64" height="64" rx="7"/><rect x="160" y="0" width="64" height="64" rx="7"/><rect x="0" y="80" width="64" height="64" rx="7"/><rect x="80" y="80" width="64" height="64" rx="7"/><rect x="0" y="160" width="64" height="64" rx="7"/><rect x="160" y="160" width="64" height="64" rx="7"/></g></svg>',
     chevron = '<svg class="bp-chevron" viewBox="0 0 12 12" width="12" height="12"><polyline points="3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    branch = '<svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M11.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-2.25.75a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.5 2.5 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25zM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zM3.5 3.25a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0z"/></svg>',
+    graph = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="4.5" cy="3" r="1.6"/><circle cx="4.5" cy="13" r="1.6"/><circle cx="11.5" cy="8" r="1.6"/><path d="M4.5 4.6v6.8M4.5 5c0 2.4 3 3 5.4 3"/></svg>',
     sliders = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h7M12 4h2M2 12h2M7 12h7"/><circle cx="10.5" cy="4" r="1.5"/><circle cx="5.5" cy="12" r="1.5"/><path d="M2 8h3M8 8h6"/><circle cx="6.5" cy="8" r="1.5"/></svg>',
     dots = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg>',
     chev = '<svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>'
