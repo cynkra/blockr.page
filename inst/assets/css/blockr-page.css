@@ -171,10 +171,6 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
   font-size: 14px; font-weight: 600; color: var(--bp-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.bp-bkind {
-  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--bp-subtle);
-  white-space: nowrap;
-}
 .bp-gh {
   min-width: 28px; height: 28px; padding: 6px 7px; border: none; border-radius: 8px;
   background: transparent; color: #d1d5db; display: inline-flex; align-items: center;
@@ -219,7 +215,6 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 .bp-blk.bp-step { margin: 4px 0; background: var(--bp-bg-subtle); border-color: transparent; }
 .bp-blk.bp-step .bp-bh { height: 36px; cursor: pointer; }
 .bp-blk.bp-step .bp-bname { font-size: 13px; color: var(--bp-text-2); flex: 0 0 auto; }
-.bp-blk.bp-step .bp-bkind { display: none; }
 .bp-blk.bp-step .bp-sum {
   display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--bp-muted);
@@ -357,7 +352,7 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
   }
   .blockr-page.bp-toc-open .bp-toc { transform: none; }
   .bp-toc-toggle { display: inline-flex; }
-  .bp-handle, .bp-bkind, .bp-sum, .bp-save { display: none !important; }
+  .bp-handle, .bp-sum, .bp-save { display: none !important; }
   .bp-name .bp-nm { max-width: 38vw; }
   .bp-toc-toggle { font-size: 0; gap: 0; padding: 0 7px; }
   .bp-ins:not(.bp-ins-last) .bp-insbtn { display: none; }
@@ -403,7 +398,6 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .blockr-page.bp-read .bp-blk.bp-step,
 .blockr-page.bp-read .bp-bh .bp-gh,
 .blockr-page.bp-read .bp-bh .blockr-block-mark,
-.blockr-page.bp-read .bp-bkind,
 .blockr-page.bp-read .bp-sum { display: none !important; }
 .blockr-page.bp-read .bp-docwrap { padding-left: 40px; }
 .blockr-page.bp-read .bp-blk { border-color: transparent; margin: 14px 0; }

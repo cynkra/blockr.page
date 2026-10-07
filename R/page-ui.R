@@ -97,7 +97,7 @@ block_ui.page_board <- function(id, x, blocks = NULL, ...) {
 page_block_card <- function(blk, blk_id, ns) {
 
   srv_id <- ns(paste0("block_", blk_id))
-  meta <- blockr.core::block_metadata(blk, c("name", "category", "icon"))
+  meta <- blockr.core::block_metadata(blk, c("category", "icon"))
 
   # The sections a block shows, as blockr.dock reads them: a chart block puts
   # its chart in the inputs section and asks for `visible = "inputs"`. Without
@@ -121,7 +121,6 @@ page_block_card <- function(blk, blk_id, ns) {
       class = "bp-bh",
       blockr.ui::block_mark(meta$icon, meta$category, size = 24),
       htmltools::span(class = "bp-bname", blockr.core::block_name(blk)),
-      htmltools::span(class = "bp-bkind", sub(" block$", "", meta$name)),
       htmltools::span(class = "bp-sum"),
       htmltools::span(class = "bp-bsp"),
       if (has_controls(blk)) {
