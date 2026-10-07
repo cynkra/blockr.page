@@ -420,6 +420,11 @@
       this.doc.addEventListener('prose-edge', e => this.onEdge(e));
       this.doc.addEventListener('prose-slash', e => this.onSlash(e));
       this.doc.addEventListener('prose-at', e => this.onAt(e));
+      // the text written in last, where a value from a table goes
+      this.doc.addEventListener('focusin', e => {
+        const host = e.target.closest && e.target.closest('.bp-blk.bp-prose');
+        if (host) this._lastText = host.dataset.blockId;
+      });
       // A text left empty goes.
       this.doc.addEventListener('focusout', e => {
         const host = e.target.closest && e.target.closest('.bp-blk.bp-prose');
@@ -597,6 +602,9 @@
         this.folded.has(key) ? this.folded.delete(key) : this.folded.add(key);
         return this.render();
       }
+      // a cell of a table: its value into the text
+      const td = t.closest('.bp-out table.blockr-table td:not(.blockr-row-number)');
+      if (blk && td && !blk.classList.contains('bp-prose')) return this.cellMenu(blk.dataset.blockId, td);
       if (blk && t.closest('.bp-bh')) {
         if (blk.classList.contains('bp-compact')) return this.jumpBlock(blk.dataset.blockId);
         const idx = this.itemIndexOf(blk);
@@ -1029,6 +1037,42 @@
       const cb = this._valuesCb;
       this._valuesCb = null;
       cb(msg.values || []);
+    }
+
+    // A table cell: "Use in text" puts it in the text as inline R, so it
+    // follows the block: in the text written in last if that reads below
+    // the block, else in the next text below it, else in a new one.
+    cellMenu(id, td) {
+      const tr = td.closest('tr'), table = td.closest('table');
+      const row = +((tr.querySelector('.blockr-row-number') || {}).textContent || NaN);
+      const th = table.querySelectorAll('thead th')[[...tr.children].indexOf(td)];
+      const col = th && th.dataset.column;
+      if (!col || !(row > 0)) return;
+      const ref = /^[A-Za-z.][A-Za-z0-9._]*$/.test(col) && !/^\.[0-9]/.test(col) ? `${id}$${col}` : `${id}[[${JSON.stringify(col)}]]`;
+      const expr = `${ref}[${row}]`;
+      const value = td.textContent.trim();
+      td.classList.add('bp-cell-on');
+      this.menu(td, {
+        items: [
+          { label: 'Use in text', meta: value, onSelect: () => this.useInText(id, expr) },
+          { label: 'Copy', meta: value, onSelect: () => navigator.clipboard && navigator.clipboard.writeText(value) }
+        ],
+        onClose: () => td.classList.remove('bp-cell-on')
+      });
+    }
+    useInText(id, expr) {
+      const items = this.state.items;
+      const at = items.findIndex(it => it.block === id);
+      const last = items.findIndex(it => it.block === this._lastText);
+      let j = last > at && this.isProse(items[last]) ? last : -1;
+      if (j < 0) j = this.textNear(at, 1);
+      if (j < 0) {
+        return this.send({ type: 'add_block', at: at + 1, registry: 'new_prose_block', from: '', text: '`r ' + expr + '`' });
+      }
+      const p = this.proseOf(items[j].block);
+      if (!p) return;
+      if (items[j].block !== this._lastText) p.focusAt('end');
+      p.insertChip(expr);
     }
 
     plusBtn() {
