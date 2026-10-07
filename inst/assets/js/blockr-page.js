@@ -11,7 +11,6 @@
   'use strict';
 
 
-  const LANE_COLORS = ['#9ca3af', '#2563eb', '#0d9488', '#7c3aed', '#b45309', '#be185d'];
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
   const ICON = {
@@ -93,6 +92,9 @@
       this.wrap = el.querySelector('.bp-docwrap');
       this.rail = el.querySelector('.bp-rail');
       this.scrollEl = el.querySelector('.bp-scroll');
+      this.tip = document.createElement('div');
+      this.tip.className = 'bp-gtip';
+      this.wrap.appendChild(this.tip);
       this.toc = el.querySelector('.bp-toc');
       this.toastEl = el.querySelector('.bp-toast');
       const reg = el.querySelector('.bp-registry');
@@ -253,7 +255,7 @@
       const d = document.createElement('div');
       d.className = 'bp-ins bp-gen' + (last ? ' bp-ins-last' : '');
       d.dataset.at = at;
-      d.innerHTML = '<span class="bp-insline"></span><button type="button" class="bp-insbtn" title="Insert">+<span class="bp-insl">Add</span></button>';
+      d.innerHTML = '<span class="bp-insline"></span><button type="button" class="bp-insbtn" title="Insert">+<span class="bp-insl">Add block</span></button>';
       return d;
     }
 
@@ -315,11 +317,23 @@
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.finishEdit(true); }
         if (e.key === 'Escape') { e.preventDefault(); this.finishEdit(false); }
       });
-      this.doc.addEventListener('mouseover', e => {
-        const b = e.target.closest('.bp-blk');
-        this.hl(b ? b.dataset.blockId : null);
+      // The graph stays still while you read; pointing at a dot lights its
+      // path and names the block.
+      this.rail.addEventListener('mouseover', e => {
+        const d = e.target.closest('.bp-dot');
+        if (!d || this.el.classList.contains('bp-dragging')) return;
+        this.hl(d.dataset.id);
+        const r = d.getBoundingClientRect(), wr = this.wrap.getBoundingClientRect();
+        this.tip.textContent = this.blockName(d.dataset.id);
+        this.tip.style.left = (r.left - wr.left - 8) + 'px';
+        this.tip.style.top = (r.top + r.height / 2 - wr.top) + 'px';
+        this.tip.classList.add('bp-show');
       });
-      this.doc.addEventListener('mouseleave', () => this.hl(null));
+      this.rail.addEventListener('mouseout', e => {
+        if (!e.target.closest('.bp-dot') || this.el.classList.contains('bp-dragging')) return;
+        this.hl(null);
+        this.tip.classList.remove('bp-show');
+      });
       // A dot: drag to a gap to add a block there, onto a block to connect,
       // or click for a block right below.
       this.rail.addEventListener('mousedown', e => {
@@ -580,6 +594,7 @@
       say.className = 'bp-say';
       this.el.appendChild(say);
       let moved = false, target = null, last = null;
+      this.tip.classList.remove('bp-show');
       this.hl(id);
 
       const clear = () => {
@@ -702,12 +717,11 @@
       nodes.forEach(n => n.from.forEach(p => {
         if (!ys.has(p)) return;
         const xp = lx(lane.get(p)), yp = ys.get(p), xc = lx(lane.get(n.id)), yc = ys.get(n.id);
-        const c = LANE_COLORS[lane.get(p) % LANE_COLORS.length];
         let d;
         if (yc < yp) {
           // an input below its consumer: a dashed hook, the order rule was bypassed
           d = `M${xp} ${yp}H${xp - 8}V${yc}H${xc}`;
-          s += `<path class="bp-edge bp-edge-back" data-from="${p}" data-to="${n.id}" d="${d}" stroke="${c}"/>`;
+          s += `<path class="bp-edge bp-edge-back" data-from="${p}" data-to="${n.id}" d="${d}"/>`;
           return;
         }
         if (xp === xc) d = `M${xp} ${yp}V${yc}`;
@@ -715,15 +729,14 @@
           const R = Math.min(o.r, Math.abs(xc - xp)), sg = Math.sign(xc - xp);
           d = `M${xp} ${yp}V${yc - R}Q${xp} ${yc} ${xp + sg * R} ${yc}H${xc}`;
         }
-        s += `<path class="bp-edge" data-from="${p}" data-to="${n.id}" d="${d}" stroke="${c}"/>`;
+        s += `<path class="bp-edge" data-from="${p}" data-to="${n.id}" d="${d}"/>`;
       }));
       const steps = new Set(this.state.items.filter(it => it.output === false).map(it => it.block));
       nodes.forEach(n => {
-        const c = LANE_COLORS[lane.get(n.id) % LANE_COLORS.length];
-        const x = lx(lane.get(n.id)), y = ys.get(n.id), t = `<title>${esc(this.blockName(n.id))}</title>`;
+        const x = lx(lane.get(n.id)), y = ys.get(n.id);
         s += steps.has(n.id)
-          ? `<rect class="bp-dot bp-dot-step" data-id="${esc(n.id)}" x="${x - o.dot + .5}" y="${y - o.dot + .5}" width="${2 * o.dot - 1}" height="${2 * o.dot - 1}" rx="2" stroke="${c}">${t}</rect>`
-          : `<circle class="bp-dot" data-id="${esc(n.id)}" cx="${x}" cy="${y}" r="${o.dot}" stroke="${c}">${t}</circle>`;
+          ? `<rect class="bp-dot bp-dot-step" data-id="${esc(n.id)}" x="${x - o.dot + .5}" y="${y - o.dot + .5}" width="${2 * o.dot - 1}" height="${2 * o.dot - 1}" rx="2"/>`
+          : `<circle class="bp-dot" data-id="${esc(n.id)}" cx="${x}" cy="${y}" r="${o.dot}"/>`;
       });
       const railW = o.x0 + (nLanes - 1) * o.laneW + o.pad;
       this.rail.innerHTML = s;

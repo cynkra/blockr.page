@@ -97,7 +97,6 @@ block_ui.page_board <- function(id, x, blocks = NULL, ...) {
 page_block_card <- function(blk, blk_id, ns) {
 
   srv_id <- ns(paste0("block_", blk_id))
-  meta <- blockr.core::block_metadata(blk, c("category", "icon"))
 
   # The sections a block shows, as blockr.dock reads them: a chart block puts
   # its chart in the inputs section and asks for `visible = "inputs"`. Without
@@ -114,12 +113,11 @@ page_block_card <- function(blk, blk_id, ns) {
     ),
     id = ns(paste0("bp-block-", blk_id)),
     `data-block-id` = blk_id,
-    # The header of blockr.dock's card with the page's switches: Controls
-    # (dock's name and icon for the inputs section), Code and Output (the
-    # report's two switches), then "..." for the rest.
+    # The header: the block's name as a caption, then the page's switches,
+    # shown on hover: Controls (dock's name and icon for the inputs section),
+    # Code and Output (the report's two switches), then "..." for the rest.
     htmltools::tags$header(
       class = "bp-bh",
-      blockr.ui::block_mark(meta$icon, meta$category, size = 24),
       htmltools::span(class = "bp-bname", blockr.core::block_name(blk)),
       htmltools::span(class = "bp-sum"),
       htmltools::span(class = "bp-bsp"),

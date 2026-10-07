@@ -80,15 +80,19 @@ body { font-family: var(--bs-body-font-family); font-optical-sizing: auto; }
 .bp-doc { position: relative; }
 svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .blockr-page.bp-no-gutter svg.bp-rail { display: none; }
-.bp-edge { fill: none; stroke-width: 2; transition: opacity .12s; }
+/* the graph is grey and still; pointing at a dot lights its path */
+.bp-edge { fill: none; stroke: #e2e5e9; stroke-width: 1.5; transition: stroke .15s; }
 .bp-edge-back { stroke-dasharray: 3 3; }
-.bp-dot { fill: var(--bp-bg); stroke-width: 2.2; pointer-events: all; cursor: pointer; }
-.bp-dot:hover { stroke-width: 3; }
-.bp-dot.bp-cur { stroke-width: 3.2; }
-.bp-rail.bp-hl .bp-edge { opacity: .18; }
-.bp-rail.bp-hl .bp-dot { opacity: .3; }
-.bp-rail.bp-hl .bp-edge.bp-hot { opacity: 1; stroke-width: 2.6; }
-.bp-rail.bp-hl .bp-dot.bp-hot { opacity: 1; }
+.bp-dot { fill: var(--bp-bg); stroke: #c4c9d0; stroke-width: 1.5; pointer-events: all; cursor: pointer; transition: stroke .15s, fill .15s; }
+.bp-dot.bp-cur { fill: #c4c9d0; }
+.bp-edge.bp-hot, .bp-dot.bp-hot { stroke: var(--bp-muted); }
+.bp-dot:hover { fill: var(--bp-muted); stroke: var(--bp-muted); }
+.bp-gtip {
+  position: absolute; z-index: 6; transform: translate(-100%, -50%); font-size: 12px; color: var(--bp-text-2); background: var(--bp-bg);
+  padding: 1px 6px; border-radius: 4px; box-shadow: 0 0 0 1px var(--bp-border); white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .12s;
+}
+.bp-gtip.bp-show { opacity: 1; }
 
 .bp-toc {
   flex: 0 0 230px;
@@ -101,17 +105,18 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
   font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
   color: var(--bp-subtle); margin: 0 0 10px;
 }
+/* where you are is the one entry in black */
 .bp-toc a {
-  display: block; text-decoration: none; color: var(--bp-muted); font-size: 13px; line-height: 1.35;
-  padding: 4px 8px; border-left: 2px solid transparent; margin-left: -8px; cursor: pointer;
+  display: block; text-decoration: none; color: var(--bp-subtle); font-size: 13px; line-height: 1.35;
+  padding: 4px 0; cursor: pointer; transition: color .2s;
 }
 .bp-toc a:hover { color: var(--bp-text); }
-.bp-toc a.bp-t-h { font-weight: 600; color: var(--bp-text-2); margin-top: 8px; }
-.bp-toc a.bp-t-h1 { color: var(--bp-text); margin-top: 0; margin-bottom: 4px; }
-.bp-toc a.bp-t-h3 { padding-left: 16px; font-weight: 500; }
-.bp-toc a.bp-t-b { padding-left: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
-.bp-toc a.bp-t-b i { width: 7px; height: 7px; border-radius: 50%; border: 1.6px solid currentColor; flex: 0 0 7px; }
-.bp-toc a.bp-cur { border-left-color: var(--bp-accent); color: var(--bp-accent); }
+.bp-toc a.bp-t-h { font-weight: 550; color: #4b5563; margin-top: 8px; }
+.bp-toc a.bp-t-h1 { color: var(--bp-text); font-weight: 600; margin-top: 0; margin-bottom: 4px; }
+.bp-toc a.bp-t-h3 { padding-left: 8px; font-weight: 500; }
+.bp-toc a.bp-t-b { padding-left: 12px; font-size: 12px; }
+.bp-toc a.bp-t-b i { display: none; }
+.bp-toc a.bp-cur { color: var(--bp-text); }
 
 /* ---- text items ------------------------------------------------------------- */
 .bp-text { position: relative; border-radius: 6px; cursor: text; }
@@ -155,43 +160,44 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 .bp-wf .bp-wdone { background: var(--bp-accent); border-color: var(--bp-accent); color: #fff; }
 
 /* ---- block cards ------------------------------------------------------------- */
+/* no frame: the name is a caption above the output, the switches show on hover */
 .bp-blk {
   position: relative;
-  border: 1px solid var(--bp-border);
-  border-radius: 10px;
-  margin: 10px 0;
+  border-radius: 6px;
+  margin: 14px 0;
   background: var(--bp-bg);
   transition: box-shadow .2s;
 }
 .bp-blk.bp-unplaced { display: none; }
-.bp-blk.bp-flash { box-shadow: 0 0 0 3px var(--bp-accent-200); }
-.bp-blk:hover { border-color: #d1d5db; }
-.bp-bh { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 6px 0 12px; }
+.bp-blk.bp-flash { box-shadow: 0 0 0 8px var(--bp-hover); }
+.bp-bh { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0; }
 .bp-bname {
-  font-size: 14px; font-weight: 600; color: var(--bp-text);
+  font-size: 12.5px; font-weight: 500; color: var(--bp-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .bp-gh {
   min-width: 28px; height: 28px; padding: 6px 7px; border: none; border-radius: 8px;
-  background: transparent; color: #d1d5db; display: inline-flex; align-items: center;
-  justify-content: center; cursor: pointer;
+  background: transparent; color: #b8bec7; display: inline-flex; align-items: center;
+  justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s;
 }
+.bp-blk:hover .bp-gh, .bp-gh:focus-visible { opacity: 1; }
+@media (hover: none) { .bp-gh { opacity: 1; } }
 .bp-gh:hover { background: var(--bp-hover); color: var(--bp-muted); }
 .bp-gh svg { width: 14px; height: 14px; }
-.bp-blk.bp-band-open .bp-gear { color: var(--blockr-blue-500, #3b82f6); }
+.bp-blk.bp-band-open .bp-gear { color: #4b5563; }
 .bp-chev svg { transition: transform .12s; }
 .bp-blk.bp-collapsed .bp-chev svg, .bp-blk.bp-compact .bp-chev svg { transform: rotate(-90deg); }
 
 .bp-band {
   display: none;
-  margin: 0 12px 10px;
+  margin: 0 0 10px;
   background: var(--bp-bg-subtle);
   border: 1px solid var(--bp-border);
   border-radius: 8px;
   padding: 10px 12px;
 }
 .bp-blk.bp-band-open .bp-band { display: block; }
-.bp-out { padding: 2px 14px 14px; overflow: auto; }
+.bp-out { padding: 2px 0 6px; overflow: auto; }
 .bp-out img { max-width: 100%; height: auto; }
 .bp-blk.bp-out-hidden .bp-out { display: none; }
 /* inputs as the content itself (a chart block's chart): no band chrome */
@@ -200,11 +206,11 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 
 /* ---- the report's two switches ---------------------------------------------------- */
 .bp-eye-t .bp-i-eyeoff { display: none; }
-.bp-blk:not(.bp-step) .bp-eye-t, .bp-blk.bp-code-on .bp-code-t { color: var(--blockr-blue-500, #3b82f6); }
+.bp-blk:not(.bp-step) .bp-eye-t, .bp-blk.bp-code-on .bp-code-t { color: #4b5563; }
 .bp-blk.bp-step .bp-eye-t .bp-i-eye { display: none; }
 .bp-blk.bp-step .bp-eye-t .bp-i-eyeoff { display: inline; }
 .bp-codeview {
-  display: none; margin: 0 12px 10px; padding: 8px 10px; background: var(--bp-bg-subtle);
+  display: none; margin: 0 0 10px; padding: 8px 10px; background: var(--bp-bg-subtle);
   border: 1px solid var(--bp-border); border-radius: 8px; font-size: 12px; line-height: 1.5;
   color: var(--bp-text-2); max-height: 320px; overflow: auto; white-space: pre;
 }
@@ -212,35 +218,33 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 
 /* ---- a step: Output off. One line saying what it does, opens to its settings ---- */
 .bp-sum { display: none; }
-.bp-blk.bp-step { margin: 4px 0; background: var(--bp-bg-subtle); border-color: transparent; }
-.bp-blk.bp-step .bp-bh { height: 36px; cursor: pointer; }
-.bp-blk.bp-step .bp-bname { font-size: 13px; color: var(--bp-text-2); flex: 0 0 auto; }
+.bp-blk.bp-step { margin: 6px 0; }
+.bp-blk.bp-step .bp-bh { height: 30px; cursor: pointer; }
+.bp-blk.bp-step .bp-bname { color: var(--bp-subtle); flex: 0 0 auto; }
 .bp-blk.bp-step .bp-sum {
   display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--bp-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #b8bec7;
 }
 .bp-blk.bp-step .bp-chev svg { transform: rotate(-90deg); }
 .bp-blk.bp-step:not(.bp-open) .bp-band,
 .bp-blk.bp-step:not(.bp-open) .bp-out,
 .bp-blk.bp-step:not(.bp-open) .bp-codeview,
 .bp-blk.bp-step:not(.bp-open) .bp-gear { display: none !important; }
-.bp-blk.bp-step.bp-open { background: var(--bp-bg); border-color: var(--bp-border); margin: 10px 0; }
+.bp-blk.bp-step.bp-open { margin: 14px 0; }
 .bp-blk.bp-step.bp-open .bp-chev svg { transform: none; }
 .bp-blk.bp-step.bp-open .bp-band { display: block; }
 .bp-blk.bp-step.bp-open .bp-out { max-height: 280px; }
-.bp-blk.bp-step .bp-mark, .bp-blk.bp-step .blockr-block-mark { transform: scale(.85); }
-svg .bp-dot-step { fill: var(--bp-bg); stroke-width: 2.2; pointer-events: all; cursor: grab; }
+svg .bp-dot-step { cursor: grab; }
 
 /* a block in a folded section: a one-line row, no output */
-.bp-blk.bp-compact { margin: 4px 0; border-color: transparent; background: var(--bp-bg-subtle); cursor: pointer; }
-.bp-blk.bp-compact .bp-bh { height: 34px; }
-.bp-blk.bp-compact .bp-bname { font-weight: 500; font-size: 13px; color: var(--bp-muted); }
+.bp-blk.bp-compact { margin: 4px 0; cursor: pointer; }
+.bp-blk.bp-compact .bp-bh { height: 30px; }
 .bp-blk.bp-compact .bp-band, .bp-blk.bp-compact .bp-out, .bp-blk.bp-compact .bp-codeview, .bp-blk.bp-compact .bp-sum,
 .bp-blk.bp-compact .bp-gear, .bp-blk.bp-compact .bp-handle { display: none; }
 
 /* ---- grip handle and insert lines -------------------------------------------- */
 .bp-handle {
-  position: absolute; left: -30px; top: 12px; width: 20px; height: 22px; border-radius: 5px;
+  position: absolute; left: -30px; top: 7px; width: 20px; height: 22px; border-radius: 5px;
   border: 0; background: transparent; color: #d1d5db; opacity: 0; cursor: pointer;
   display: flex; align-items: center; justify-content: center; padding: 0;
 }
@@ -251,22 +255,21 @@ svg .bp-dot-step { fill: var(--bp-bg); stroke-width: 2.2; pointer-events: all; c
 
 .bp-ins { position: relative; height: 14px; }
 .bp-insline { position: absolute; left: 0; right: 0; top: 6px; height: 2px; border-radius: 1px; }
-.bp-ins:hover .bp-insline, .bp-ins.bp-open .bp-insline { background: var(--bp-accent-200); }
+/* a gap: a grey + in the gutter while the pointer is on it, no line */
 .bp-insbtn {
-  position: absolute; left: -31px; top: -4px; width: 22px; height: 22px; border-radius: 50%;
-  border: 1px solid #d1d5db; background: var(--bp-bg); color: var(--bp-muted);
+  position: absolute; left: -26px; top: -2px; width: 18px; height: 18px; border-radius: 4px;
+  border: 0; background: transparent; color: var(--bp-subtle);
   display: flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer;
-  font-size: 15px; line-height: 1; padding: 0;
+  font-size: 16px; font-weight: 300; line-height: 1; padding: 0;
 }
 .bp-ins:hover .bp-insbtn, .bp-ins.bp-open .bp-insbtn { opacity: 1; }
-.bp-ins.bp-open .bp-insbtn { border-color: var(--blockr-blue-500, #3b82f6); color: var(--bp-accent); background: var(--bp-accent-50); }
+.bp-insbtn:hover, .bp-ins.bp-open .bp-insbtn { color: var(--bp-text); }
 .bp-insl { display: none; }
 /* the end of the document always shows its + */
 .bp-ins-last { height: auto; margin-top: 18px; }
 .bp-ins-last .bp-insline { display: none; }
 .bp-ins-last .bp-insbtn {
-  position: static; opacity: 1; width: auto; height: 30px; border-radius: 8px; padding: 0 12px;
-  font-size: 13px; gap: 6px; border-style: dashed;
+  position: static; opacity: 1; width: auto; height: 24px; font-size: 13px; font-weight: 400; gap: 6px;
 }
 .bp-ins-last .bp-insl { display: inline; }
 
@@ -327,8 +330,8 @@ a.bp-navbtn { text-decoration: none; }
 .blockr-page.bp-dragging, .blockr-page.bp-dragging * { cursor: grabbing !important; user-select: none; }
 svg.bp-wire { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; z-index: 5; }
 svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stroke-dasharray: 4 3; }
-.bp-blk.bp-drop-ok { border-color: #93c5fd; box-shadow: 0 0 0 3px var(--bp-accent-50); }
-.bp-blk.bp-drop-no { border-color: #fecaca; box-shadow: 0 0 0 3px #fef2f2; }
+.bp-blk.bp-drop-ok { box-shadow: 0 0 0 6px var(--bp-bg), 0 0 0 7px #93c5fd, 0 0 0 10px var(--bp-accent-50); }
+.bp-blk.bp-drop-no { box-shadow: 0 0 0 6px var(--bp-bg), 0 0 0 7px #fecaca, 0 0 0 10px #fef2f2; }
 .bp-ins.bp-drop .bp-insline { background: var(--blockr-blue-500, #3b82f6); height: 3px; top: 5px; }
 .bp-ins.bp-drop::after {
   content: attr(data-label); position: absolute; left: 8px; top: -9px; background: var(--bp-bg); padding: 0 6px;
@@ -359,7 +362,7 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
   .bp-text h1 { font-size: 22px; }
   .bp-text h2 { font-size: 17px; }
   .bp-text p { font-size: 14.5px; }
-  .bp-out { padding: 2px 8px 10px; }
+  .bp-out { padding: 2px 0 8px; }
 }
 
 /* ---- the graph's switch: a word, shown while the pointer is over the gutter ---- */
@@ -388,8 +391,8 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .bp-srchead .bp-coltitle { margin-bottom: 0; }
 
 /* ---- header B: Controls, Code, Output, "..." ------------------------------------- */
-.bp-blk.bp-band-open .bp-ctl-t { color: var(--blockr-blue-500, #3b82f6); }
-.bp-blk.bp-step:not(.bp-open) .bp-ctl-t { color: #d1d5db; }
+.bp-blk.bp-band-open .bp-ctl-t { color: #4b5563; }
+.bp-blk.bp-step:not(.bp-open) .bp-ctl-t { color: #b8bec7; }
 
 /* ---- Read: the document as its readers get it ------------------------------------- */
 .blockr-page.bp-read svg.bp-rail,
@@ -397,12 +400,10 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .blockr-page.bp-read .bp-handle,
 .blockr-page.bp-read .bp-blk.bp-step,
 .blockr-page.bp-read .bp-bh .bp-gh,
-.blockr-page.bp-read .bp-bh .blockr-block-mark,
 .blockr-page.bp-read .bp-sum { display: none !important; }
 .blockr-page.bp-read .bp-docwrap { padding-left: 40px; }
 .blockr-page.bp-read .bp-blk { border-color: transparent; margin: 14px 0; }
 .blockr-page.bp-read .bp-bh { height: auto; padding: 0 0 6px; }
-.blockr-page.bp-read .bp-bname { font-size: 13px; color: var(--bp-muted); }
 .blockr-page.bp-read .bp-out { padding: 0; }
 .blockr-page.bp-read .bp-band { margin: 0 0 10px; }
 .blockr-page.bp-read .bp-text { cursor: default; }
