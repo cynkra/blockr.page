@@ -402,10 +402,9 @@
       const d = document.createElement('div');
       d.className = 'bp-srchead bp-gen';
       const f = this.source.fmt;
+      // downloading and rendering are in the Export menu
       d.innerHTML = `<span class="bp-fmt"><button type="button" data-fmt="qmd" class="${f === 'qmd' ? 'bp-on' : ''}">.qmd</button>` +
-        `<button type="button" data-fmt="R" class="${f === 'R' ? 'bp-on' : ''}">.R</button></span>` +
-        '<span class="bp-bsp"></span><button type="button" class="bp-srcact" data-dl="page_dl">Download</button>' +
-        '<button type="button" class="bp-srcact" data-dl="page_html">Render HTML</button>';
+        `<button type="button" data-fmt="R" class="${f === 'R' ? 'bp-on' : ''}">.R</button></span>`;
       return d;
     }
 
@@ -554,7 +553,7 @@
       this.el.querySelector('.bp-save').addEventListener('click', e => this.saveMenu(e.currentTarget));
       const exp = this.el.querySelector('.bp-export');
       if (exp) exp.addEventListener('click', e => this.exportMenu(e.currentTarget));
-      // The source's head: Quarto or R script, Download, Render HTML.
+      // The source's head: Quarto or R script.
       this.doc.addEventListener('click', e => {
         const f = e.target.closest('.bp-srchead [data-fmt]');
         if (f && f.dataset.fmt !== this.source.fmt) {
@@ -562,11 +561,6 @@
           localStorage.setItem('blockr-page-source-fmt', this.source.fmt);
           this.sendSource();
           this.render();
-        }
-        const d = e.target.closest('.bp-srchead [data-dl]');
-        if (d) {
-          const a = this.el.querySelector(`.bp-offscreen a[id$="${d.dataset.dl}"]`);
-          if (a) a.click();
         }
       });
       window.addEventListener('resize', () => {
