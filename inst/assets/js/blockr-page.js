@@ -947,6 +947,8 @@
       const host = e.target.closest('.bp-blk.bp-prose');
       const i = host ? this.itemIndexOf(host) : -1;
       if (i < 0) return;
+      // in a sentence: a number or a reference, as "@" offers
+      if (e.detail.inline) return this.inlineMenu(e, '/');
       e.preventDefault();
       this.slashMenu(host, i, e.detail, true);
     }
@@ -1003,8 +1005,9 @@
       return a;
     }
 
-    /* ---- "@" in a text: a value from a block above ------------------------------- */
-    onAt(e) {
+    /* ---- "@", or "/" in a sentence: a reference or a value from a block above ----- */
+    onAt(e) { return this.inlineMenu(e, '@'); }
+    inlineMenu(e, ch) {
       if (this.read) return;
       const host = e.target.closest('.bp-blk.bp-prose');
       const i = host ? this.itemIndexOf(host) : -1;
@@ -1024,7 +1027,7 @@
         done = true;
         a.remove();
         this.slashing = null;
-        if (!picked) prose.typeHere('@' + query);
+        if (!picked) prose.typeHere(ch + query);
       };
       const pick = (expr, open) => { picked = true; prose.insertChip(expr, open); };
       const rows = [];
