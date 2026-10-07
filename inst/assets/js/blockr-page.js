@@ -31,6 +31,10 @@
     trash: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6zM14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.1 4 4 4.1V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.1L11.9 4H4.1z"/></svg>'
   };
 
+  // what an output does with a click itself
+  const OWN_CLICKS = 'a, button, input, select, textarea, label, summary, [role="button"], [role="tab"], ' +
+    '[contenteditable="true"], .blockr-sortable, .shiny-input-container, canvas, .html-widget, .bp-cap';
+
   const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -646,6 +650,14 @@
         const k = run.dataset.key;
         this.openRuns.has(k) ? this.openRuns.delete(k) : this.openRuns.add(k);
         return this.render();
+      }
+      // A click on a block's output selects it, its settings beside the text,
+      // unless it is on something the output does itself (a link, a button,
+      // a sortable header, a chart) or selects text.
+      if (blk && !blk.classList.contains('bp-prose') && !blk.classList.contains('bp-out-hidden') &&
+          t.closest('.bp-out, .bp-codeview') && !t.closest(OWN_CLICKS) && document.getSelection().isCollapsed) {
+        if (this.panelFor !== blk.dataset.blockId) this.openPanel(blk.dataset.blockId);
+        return;
       }
       if (blk && t.closest('.bp-bh')) {
         if (blk.classList.contains('bp-compact')) return this.jumpBlock(blk.dataset.blockId);
