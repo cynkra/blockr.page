@@ -87,7 +87,3 @@ test_that("a transform that feeds another block starts as a step", {
   expect_identical(page_items(b3)[[2L]], list(block = "s", code = TRUE, output = FALSE))
 })
 
-test_that("a step's summary is its call on one line", {
-  expect_identical(step_summary(c(f = "f <- dplyr::filter(\n  x,\n  y > 1\n)")),
-                   c(f = "dplyr::filter(x, y > 1)"))
-})

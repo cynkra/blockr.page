@@ -203,15 +203,10 @@ svg.bp-rail { position: absolute; left: 0; top: 0; overflow: visible; pointer-ev
 }
 .bp-blk.bp-code-on .bp-codeview:not(:empty) { display: block; }
 
-/* ---- a step: Output off. One line saying what it does, opens to its settings ---- */
-.bp-sum { display: none; }
+/* ---- a step: Output off. One line, its name, opens to its settings ---- */
 .bp-blk.bp-step { margin: 6px 0; }
 .bp-blk.bp-step .bp-bh { height: 30px; cursor: pointer; }
 .bp-blk.bp-step .bp-bname { color: var(--bp-subtle); flex: 0 0 auto; }
-.bp-blk.bp-step .bp-sum {
-  display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #b8bec7;
-}
 .bp-blk.bp-step .bp-chev svg { transform: rotate(-90deg); }
 .bp-blk.bp-step:not(.bp-open) .bp-band,
 .bp-blk.bp-step:not(.bp-open) .bp-out,
@@ -226,7 +221,7 @@ svg .bp-dot-step { cursor: grab; }
 /* a block in a folded section: a one-line row, no output */
 .bp-blk.bp-compact { margin: 4px 0; cursor: pointer; }
 .bp-blk.bp-compact .bp-bh { height: 30px; }
-.bp-blk.bp-compact .bp-band, .bp-blk.bp-compact .bp-out, .bp-blk.bp-compact .bp-codeview, .bp-blk.bp-compact .bp-sum,
+.bp-blk.bp-compact .bp-band, .bp-blk.bp-compact .bp-out, .bp-blk.bp-compact .bp-codeview,
 .bp-blk.bp-compact .bp-gear, .bp-blk.bp-compact .bp-handle { display: none; }
 
 /* ---- grip handle and insert lines -------------------------------------------- */
@@ -331,7 +326,7 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
   }
   .blockr-page.bp-toc-open .bp-toc { transform: none; }
   .bp-toc-toggle { display: inline-flex; }
-  .bp-handle, .bp-sum, .bp-save { display: none !important; }
+  .bp-handle, .bp-save { display: none !important; }
   .bp-name .bp-nm { max-width: 38vw; }
   .bp-toc-toggle { font-size: 0; gap: 0; padding: 0 7px; }
   .bp-ins:not(.bp-ins-last) .bp-insbtn { display: none; }
@@ -370,8 +365,7 @@ svg.bp-wire path { fill: none; stroke: var(--bp-accent); stroke-width: 1.8; stro
 .blockr-page.bp-read .bp-ins,
 .blockr-page.bp-read .bp-handle,
 .blockr-page.bp-read .bp-blk.bp-step,
-.blockr-page.bp-read .bp-bh .bp-gh,
-.blockr-page.bp-read .bp-sum { display: none !important; }
+.blockr-page.bp-read .bp-bh .bp-gh { display: none !important; }
 .blockr-page.bp-read .bp-docwrap { padding-left: 40px; }
 .blockr-page.bp-read .bp-blk { border-color: transparent; margin: 14px 0; }
 .blockr-page.bp-read .bp-bh { height: auto; padding: 0 0 6px; }

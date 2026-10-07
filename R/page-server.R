@@ -180,23 +180,19 @@ page_callback <- function(board, update, session, ...) {
     }
   )
 
-  # A step shows one line saying what it does: its call, from the block's
-  # live expression. Sent on its own, so editing a step's settings updates
-  # the line without redrawing the page.
   # A block with its Code switch on shows its code above its result, as the
-  # document will.
+  # document will. Sent on its own, so editing a block's settings updates the
+  # code without redrawing the page.
   shiny::observe(
     {
       blks <- Filter(is_block_item, items())
-      steps <- unlist(lapply(blks, function(it) if (!isTRUE(it$output)) it$block))
       shown <- unlist(lapply(blks, function(it) if (isTRUE(it$code)) it$block))
-      if (!length(steps) && !length(shown)) return()
+      if (!length(shown)) return()
       code <- live_block_code(board)
       session$sendCustomMessage(
         "blockr-page-code",
         list(
           target = target,
-          summary = as.list(step_summary(code[intersect(steps, names(code))])),
           code = as.list(code[intersect(shown, names(code))])
         )
       )

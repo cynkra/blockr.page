@@ -123,7 +123,6 @@ page_block_card <- function(blk, blk_id, ns) {
     htmltools::tags$header(
       class = "bp-bh",
       htmltools::span(class = "bp-bname", blockr.core::block_name(blk)),
-      htmltools::span(class = "bp-sum"),
       htmltools::span(class = "bp-bsp"),
       if (has_controls(blk)) {
         htmltools::tags$button(

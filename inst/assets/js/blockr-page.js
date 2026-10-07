@@ -836,10 +836,6 @@
     Shiny.addCustomMessageHandler('blockr-page-code', msg => {
       const p = pageFor(msg.target);
       if (!p) return;
-      Object.entries(asObj(msg.summary)).forEach(([id, txt]) => {
-        const n = p.doc.querySelector(`:scope > .bp-blk[data-block-id="${CSS.escape(id)}"] .bp-sum`);
-        if (n) { n.textContent = txt; n.title = txt; }
-      });
       Object.entries(asObj(msg.code)).forEach(([id, txt]) => {
         const n = p.doc.querySelector(`:scope > .bp-blk[data-block-id="${CSS.escape(id)}"] .bp-codeview`);
         if (n) n.textContent = txt;

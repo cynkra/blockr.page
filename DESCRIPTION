@@ -1,6 +1,6 @@
 Package: blockr.page
 Title: A Document View for 'blockr' Boards
-Version: 0.0.11
+Version: 0.0.12
 Authors@R: c(
     person("Christoph", "Sax", , "christoph@cynkra.com", role = c("aut", "cre")),
     person("The Inter Project Authors", role = "cph",

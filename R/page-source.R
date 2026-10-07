@@ -73,18 +73,6 @@ chunk_vis_spin <- function(code, output) {
   else ", include=FALSE"
 }
 
-# A step's one line: its call without the assignment, on one line.
-step_summary <- function(code) {
-  vapply(
-    code,
-    function(x) {
-      x <- gsub("\\s+", " ", sub("^[^ ]+ <- ", "", x))
-      gsub(" \\)", ")", gsub("\\( ", "(", x))
-    },
-    character(1L)
-  )
-}
-
 page_title <- function(items) {
   if (!length(items) || is_block_item(items[[1L]])) {
     return(NULL)
