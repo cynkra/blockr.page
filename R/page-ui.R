@@ -9,7 +9,6 @@ board_ui.page_board <- function(id, x, plugins = blockr.core::board_plugins(x),
 
   htmltools::tagList(
     page_dep(),
-    board_ui(id, plugins[["notify_user"]], x),
     htmltools::div(
       class = paste("blockr-page", if (page_read_only()) "bp-read bp-readonly"),
       id = ns("page"),
@@ -209,10 +208,10 @@ board_plugins.page_board <- function(x, which = NULL, ...) {
 
   # The page adds blocks through its own insert menu, so core's block, link
   # and stack managers stay out, and the Source column replaces core's code
-  # dialog.
+  # dialog. No notify_user, as on blockr.dock: a block shows its errors in
+  # place, so toasts only repeat them.
   plugins <- blockr.core::plugins(
     blockr.core::preserve_board(),
-    blockr.core::notify_user(),
     blockr.core::edit_block()
   )
 
