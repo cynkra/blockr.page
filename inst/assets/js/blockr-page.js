@@ -443,6 +443,16 @@
         const last = this.doc.lastElementChild;
         if (last && e.clientY > last.getBoundingClientRect().bottom) this.writeAt(this.state.items.length);
       });
+      // Cmd/Ctrl+Z outside a text undoes the page's last change: a block
+      // added, removed or moved, two texts joined. In a text it is the
+      // text's own.
+      document.addEventListener('keydown', e => {
+        const k = (e.key || '').toLowerCase();
+        if (!(e.metaKey || e.ctrlKey) || e.altKey || (k !== 'z' && k !== 'y') || this.read) return;
+        if (e.target.closest && e.target.closest('.ProseMirror, input, textarea, select, [contenteditable="true"], .blockr-menu')) return;
+        e.preventDefault();
+        this.send({ type: k === 'y' || e.shiftKey ? 'redo' : 'undo' });
+      });
       // Escape closes the panel, unless a menu or a field has it.
       document.addEventListener('keydown', e => {
         if (e.key !== 'Escape' || !this.panelFor || this.openMenu || e.defaultPrevented) return;
@@ -703,8 +713,10 @@
           const a = this.proseOf(items[i - 1].block), b = this.proseOf(items[i].block);
           if (!a || !b) return;
           e.preventDefault();
+          const was = a.text();
           a.join(b.text());
-          return this.send({ type: 'remove', index: i });
+          // undo brings both texts back as they were
+          return this.send({ type: 'remove', index: i, texts: [items[i - 1].block], prior: { [items[i - 1].block]: was } });
         }
         if (empty) {
           e.preventDefault();
@@ -718,8 +730,9 @@
         const a = this.proseOf(items[i].block), b = this.proseOf(items[i + 1].block);
         if (!a || !b) return;
         e.preventDefault();
+        const was = a.text();
         a.join(b.text());
-        this.send({ type: 'remove', index: i + 1 });
+        this.send({ type: 'remove', index: i + 1, texts: [items[i].block], prior: { [items[i].block]: was } });
       }
     }
 

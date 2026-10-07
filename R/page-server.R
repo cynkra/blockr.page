@@ -80,6 +80,69 @@ page_callback <- function(board, update, session, ...) {
     )
   }
 
+  # Undo and redo for the page's own changes: before each, a snapshot of the
+  # reading order, the links and every block with its current state; undo
+  # puts the board back to it. Texts named in `texts` are restored too (a
+  # split or joined text), `prior` gives their text from before a change the
+  # client has already made.
+  hist <- new.env(parent = emptyenv())
+  hist$undo <- list()
+  hist$redo <- list()
+
+  snapshot <- function(texts = character(), prior = list()) {
+    shiny::isolate({
+      brd <- board$board
+      blks <- blockr.core::board_blocks(brd)
+      ser <- lapply(stats::setNames(nm = names(blks)), function(id) {
+        st <- board$blocks[[id]]$server$state
+        vals <- if (is.null(st)) NULL else lapply(st, function(x) if (is.function(x)) x() else x)
+        tryCatch(blockr.core::blockr_ser(blks[[id]], state = vals), error = function(e) NULL)
+      })
+      texts <- intersect(texts, names(blks))
+      txt <- lapply(texts, function(t) {
+        if (!is.null(prior[[t]])) prior[[t]] else board$blocks[[t]]$server$state$text()
+      })
+      list(
+        items = items(),
+        blocks = ser,
+        links = as.data.frame(blockr.core::board_links(brd)),
+        texts = stats::setNames(txt, texts)
+      )
+    })
+  }
+
+  checkpoint <- function(texts = character(), prior = list()) {
+    hist$undo <- c(utils::tail(hist$undo, 49L), list(snapshot(texts, prior)))
+    hist$redo <- list()
+  }
+
+  restore <- function(s) {
+    brd <- board$board
+    cur <- blockr.core::board_block_ids(brd)
+    keep <- names(s$blocks)[!vapply(s$blocks, is.null, logical(1L))]
+    add <- setdiff(keep, cur)
+    rm <- setdiff(cur, names(s$blocks))
+    cl <- as.data.frame(blockr.core::board_links(brd))
+    sl <- s$links
+    key <- function(l) paste(l$from, l$to, l$input, sep = "\r")
+    la <- sl[!key(sl) %in% key(cl) & sl$from %in% keep & sl$to %in% keep, , drop = FALSE]
+    lr <- cl[!key(cl) %in% key(sl) & !cl$from %in% rm & !cl$to %in% rm, , drop = FALSE]
+    upd <- list()
+    if (length(add)) {
+      upd$blocks$add <- blockr.core::as_blocks(lapply(s$blocks[add], blockr.core::blockr_deser))
+    }
+    if (length(rm)) upd$blocks$rm <- rm
+    if (nrow(la)) {
+      upd$links$add <- blockr.core::links(from = la$from, to = la$to, input = la$input)
+    }
+    if (nrow(lr)) upd$links$rm <- lr$id
+    items(s$items)
+    for (t in intersect(names(s$texts), cur)) {
+      board$blocks[[t]]$server$state$text(s$texts[[t]])
+    }
+    if (length(upd)) update(upd)
+  }
+
   # A new order, unless it puts a block above one it reads from.
   reorder <- function(new) {
     bad <- broken_link(new, link_frame(board$board))
@@ -98,6 +161,18 @@ page_callback <- function(board, update, session, ...) {
       act <- input$page_action
       cur <- items()
       n <- length(cur)
+
+      changes <- c("add_block", "insert_in_text", "connect", "toggle", "add_text",
+                   "add_section", "edit_text", "move", "move_to", "remove")
+      if (act$type %in% changes) {
+        i <- as.integer(act$index) + 1L
+        texts <- unlist(act$texts)
+        if (identical(act$type, "insert_in_text") && length(i) && i <= n &&
+              is_block_item(cur[[i]])) {
+          texts <- c(texts, cur[[i]]$block)
+        }
+        checkpoint(as.character(texts), as.list(act$prior))
+      }
 
       switch(
         act$type,
@@ -177,6 +252,24 @@ page_callback <- function(board, update, session, ...) {
           if (length(rest)) pending[[names(rest)]] <- at + 1L
           fresh(bid)
           update(upd)
+        },
+
+        undo = {
+          k <- length(hist$undo)
+          if (!k) return(toast("Nothing to undo."))
+          s <- hist$undo[[k]]
+          hist$undo <- hist$undo[-k]
+          hist$redo <- c(hist$redo, list(snapshot(names(s$texts))))
+          restore(s)
+        },
+
+        redo = {
+          k <- length(hist$redo)
+          if (!k) return(toast("Nothing to redo."))
+          s <- hist$redo[[k]]
+          hist$redo <- hist$redo[-k]
+          hist$undo <- c(hist$undo, list(snapshot(names(s$texts))))
+          restore(s)
         },
 
         connect = {
