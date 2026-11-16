@@ -14,7 +14,7 @@
 #' utility block that feeds another block, `TRUE` otherwise; `code` defaults to
 #' `FALSE`.
 #' Text is a block: each text item becomes a prose block
-#' ([blockr.extra::new_prose_block()]) on the board, so text travels with the
+#' ([blockr.script::new_prose_block()]) on the board, so text travels with the
 #' board and can compute with inline R (`` `r expr` ``). A prose block that
 #' names a block above it in its code reads from it; one that names none has
 #' no input.
@@ -101,7 +101,7 @@ text_to_prose <- function(items, block_ids) {
     it <- items[[i]]
     if (is_block_item(it) || is_section_item(it)) next
     id <- free_id("text", c(block_ids, names(blocks)))
-    blocks[[id]] <- blockr.extra::new_prose_block(it$text, block_name = "Text")
+    blocks[[id]] <- blockr.script::new_prose_block(it$text, block_name = "Text")
     items[[i]] <- list(block = id, output = TRUE)
   }
   list(blocks = blocks, items = items)

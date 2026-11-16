@@ -50,7 +50,7 @@ to its settings. Left out, \code{output} defaults to \code{FALSE} for a transfor
 utility block that feeds another block, \code{TRUE} otherwise; \code{code} defaults to
 \code{FALSE}.
 Text is a block: each text item becomes a prose block
-(\code{\link[blockr.extra:new_prose_block]{blockr.extra::new_prose_block()}}) on the board, so text travels with the
+(\code{\link[blockr.script:new_prose_block]{blockr.script::new_prose_block()}}) on the board, so text travels with the
 board and can compute with inline R (\code{`r expr`}). A prose block that
 names a block above it in its code reads from it; one that names none has
 no input.

@@ -18,7 +18,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
     blockr.core (>= 0.1.4),
-    blockr.extra,
+    blockr.script,
     blockr.ui,
     bslib,
     commonmark,
@@ -29,7 +29,7 @@ Imports:
     utils
 Remotes:
     BristolMyersSquibb/blockr.core,
-    cynkra/blockr.extra,
+    BristolMyersSquibb/blockr.script,
     BristolMyersSquibb/blockr.ui
 Suggests:
     testthat (>= 3.0.0)
